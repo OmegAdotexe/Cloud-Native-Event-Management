@@ -9,9 +9,18 @@ This is the Spring Boot modular monolith backend for CampusConnect.
 
 ## Setup and Run
 
-1. Copy `.env.example` to `.env` (optional, Spring Boot will use defaults matching `docker-compose` out of the box if environment variables are not set):
+1. Copy `.env.example` to `.env` and set `JWT_SECRET` to a Base64URL-encoded value representing at least 32 random bytes. Spring Boot loads either `backend/.env` or the repository-root `.env`; neither file is committed:
    ```bash
    cp .env.example .env
+   ```
+
+   In Windows PowerShell, generate a compatible value with:
+   ```powershell
+   $bytes = New-Object byte[] 32
+   $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+   $rng.GetBytes($bytes)
+   $rng.Dispose()
+   [Convert]::ToBase64String($bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_')
    ```
 
 2. Start the infrastructure (PostgreSQL and RabbitMQ):
@@ -27,6 +36,11 @@ This is the Spring Boot modular monolith backend for CampusConnect.
 4. Run the application:
    ```bash
    mvn spring-boot:run
+   ```
+
+   To create the demo accounts, add the `dev` profile:
+   ```bash
+   mvn -Dspring-boot.run.profiles=dev spring-boot:run
    ```
 
 ## Services

@@ -2,7 +2,6 @@ package com.campusconnect.auth.controller;
 
 import com.campusconnect.auth.dto.LoginRequest;
 import com.campusconnect.auth.dto.RegisterRequest;
-import com.campusconnect.user.model.Role;
 import com.campusconnect.user.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,7 +48,6 @@ public class AuthControllerTest {
                 .name("Test User")
                 .email("test@example.com")
                 .password("password123")
-                .role(Role.PARTICIPANT)
                 .build();
 
         mockMvc.perform(post("/api/auth/register")
@@ -67,7 +65,6 @@ public class AuthControllerTest {
                 .name("Test User")
                 .email("test@example.com")
                 .password("password123")
-                .role(Role.PARTICIPANT)
                 .build();
 
         // First registration succeeds
@@ -85,12 +82,24 @@ public class AuthControllerTest {
     }
 
     @Test
+    void register_IgnoresPrivilegedRoleProvidedByClient() throws Exception {
+        String request = """
+                {"name":"Untrusted User","email":"untrusted@example.com","password":"password123","role":"SUPER_ADMIN"}
+                """;
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role").value("PARTICIPANT"));
+    }
+
+    @Test
     void login_Success() throws Exception {
         RegisterRequest registerReq = RegisterRequest.builder()
                 .name("Test User")
                 .email("test2@example.com")
                 .password("password123")
-                .role(Role.PARTICIPANT)
                 .build();
 
         mockMvc.perform(post("/api/auth/register")

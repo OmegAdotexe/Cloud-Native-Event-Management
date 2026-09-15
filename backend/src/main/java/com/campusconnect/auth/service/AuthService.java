@@ -4,6 +4,7 @@ import com.campusconnect.auth.dto.AuthResponse;
 import com.campusconnect.auth.dto.LoginRequest;
 import com.campusconnect.auth.dto.RegisterRequest;
 import com.campusconnect.user.model.User;
+import com.campusconnect.user.model.Role;
 import com.campusconnect.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -31,7 +32,9 @@ public class AuthService {
                 .name(request.getName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(request.getRole())
+                // Public registration never grants a privileged role. Event and
+                // super administrators must be provisioned through an authorized path.
+                .role(Role.PARTICIPANT)
                 .build();
 
         user = userRepository.save(user);

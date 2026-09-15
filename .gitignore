@@ -1,0 +1,40 @@
+# =========================
+# Java / Maven
+# =========================
+backend/target/
+*.class
+
+# =========================
+# Node / React / Vite
+# =========================
+frontend/node_modules/
+frontend/dist/
+node_modules/
+dist/
+
+# =========================
+# Environment files / secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# IDE files
+# =========================
+.idea/
+.vscode/
+*.iml
+
+# =========================
+# Operating system files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Logs
+# =========================
+*.log
+npm-debug.log*
+backend/test-error.txt

@@ -1,0 +1,513 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+/* ── Reset & root ──────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: #0a0f1c;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+/* ── Design tokens ─────────────────────────────────────────────── */
+.relay-root {
+  --ink: #0D1321;
+  --panel: #141B2E;
+  --panel-2: #1B2440;
+  --line: #262F4A;
+  --paper: #E9E7DF;
+  --mute: #8A93AC;
+  --amber: #F2A93C;
+  --teal: #4FB8A6;
+  --coral: #E2604F;
+  font-family: 'Inter', sans-serif;
+  background: var(--ink);
+  color: var(--paper);
+  min-height: 100%;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  display: flex;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.relay-mono {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.relay-display {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* ── Sidebar ───────────────────────────────────────────────────── */
+.relay-side {
+  width: 210px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px;
+  gap: 22px;
+}
+
+.relay-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px;
+}
+
+.relay-logo-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, var(--amber), var(--coral));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.relay-logo-text {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.relay-logo-sub {
+  font-size: 10.5px;
+  color: var(--mute);
+  margin-top: -2px;
+}
+
+.relay-roles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.relay-role-label {
+  font-size: 10.5px;
+  color: var(--mute);
+  padding: 0 6px 2px;
+  text-transform: lowercase;
+}
+
+.relay-role-btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--mute);
+  border: 1px solid transparent;
+  transition: background .15s, color .15s;
+  background: none;
+}
+
+.relay-role-btn:hover {
+  background: var(--panel-2);
+  color: var(--paper);
+}
+
+.relay-role-btn.active {
+  background: var(--panel-2);
+  color: var(--paper);
+  border-color: var(--line);
+}
+
+.relay-role-btn.active .relay-role-dot {
+  background: var(--amber);
+}
+
+.relay-role-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line);
+  flex-shrink: 0;
+}
+
+.relay-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: auto;
+}
+
+.relay-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: var(--mute);
+}
+
+.relay-nav-item.active {
+  color: var(--paper);
+  background: var(--panel-2);
+}
+
+/* ── Main layout ───────────────────────────────────────────────── */
+.relay-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.relay-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.relay-topbar h1 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.relay-topbar p {
+  font-size: 12px;
+  color: var(--mute);
+  margin: 2px 0 0;
+}
+
+.relay-body {
+  flex: 1;
+  overflow: auto;
+  padding: 20px 22px;
+}
+
+.relay-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 18px;
+  align-items: start;
+}
+
+/* ── Cards ─────────────────────────────────────────────────────── */
+.relay-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.relay-event-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 13px 14px;
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: border-color .15s, background .15s;
+}
+
+.relay-event-card:hover {
+  border-color: #3A466B;
+}
+
+.relay-event-card.active {
+  border-color: var(--amber);
+  background: var(--panel-2);
+}
+
+.relay-event-name {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.relay-event-meta {
+  display: flex;
+  gap: 14px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.relay-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: var(--mute);
+}
+
+/* ── Form controls ─────────────────────────────────────────────── */
+.relay-field-label {
+  font-size: 10.5px;
+  color: var(--mute);
+  margin-bottom: 5px;
+  display: block;
+}
+
+.relay-input {
+  width: 100%;
+  background: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 8px 10px;
+  color: var(--paper);
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.relay-input:focus {
+  outline: none;
+  border-color: var(--amber);
+}
+
+.relay-btn {
+  background: var(--amber);
+  color: #1A1206;
+  border: none;
+  border-radius: 7px;
+  padding: 9px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity .15s;
+}
+
+.relay-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.relay-btn-ghost {
+  background: transparent;
+  color: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+/* ── Live feed ─────────────────────────────────────────────────── */
+.relay-feed-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.relay-feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  max-height: 240px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.relay-feed-row {
+  display: flex;
+  gap: 9px;
+  font-size: 12px;
+}
+
+.relay-feed-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.relay-feed-text {
+  color: var(--paper);
+  line-height: 1.4;
+}
+
+.relay-feed-ts {
+  color: var(--mute);
+  font-size: 10.5px;
+  margin-top: 1px;
+}
+
+/* ── Trace waterfall ───────────────────────────────────────────── */
+.relay-trace-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.relay-trace-label {
+  width: 150px;
+  font-size: 10.5px;
+  color: var(--mute);
+  flex-shrink: 0;
+}
+
+.relay-trace-track {
+  flex: 1;
+  height: 6px;
+  background: var(--ink);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.relay-trace-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width .5s ease;
+}
+
+.relay-trace-ms {
+  width: 40px;
+  text-align: right;
+  font-size: 10.5px;
+  color: var(--mute);
+  flex-shrink: 0;
+}
+
+/* ── Pill & notification row ───────────────────────────────────── */
+.relay-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  padding: 2px 7px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+.relay-notif-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.relay-notif-row:last-child {
+  border-bottom: none;
+}
+
+.relay-notif-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: var(--panel-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Super admin stats ─────────────────────────────────────────── */
+.relay-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.relay-stat-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.relay-stat-num {
+  font-size: 24px;
+  font-weight: 700;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.relay-stat-label {
+  font-size: 11px;
+  color: var(--mute);
+  margin-top: 3px;
+}
+
+/* ── Channel bar chart ─────────────────────────────────────────── */
+.relay-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.relay-bar-label {
+  width: 90px;
+  font-size: 12px;
+  color: var(--mute);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.relay-bar-track {
+  flex: 1;
+  height: 10px;
+  background: var(--ink);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.relay-bar-fill {
+  height: 100%;
+  border-radius: 5px;
+}
+
+.relay-bar-val {
+  width: 30px;
+  text-align: right;
+  font-size: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────── */
+.relay-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.relay-scroll::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 3px;
+}
+
+/* ── Utility ───────────────────────────────────────────────────── */
+.relay-empty {
+  color: var(--mute);
+  font-size: 12.5px;
+  padding: 20px 0;
+  text-align: center;
+}

@@ -78,8 +78,12 @@ export async function publishEvent(id) {
   return authFetch(`/api/events/${id}/publish`, { method: "PATCH" });
 }
 
-export async function cancelEvent(id) {
-  return authFetch(`/api/events/${id}/cancel`, { method: "PATCH" });
+export async function cancelEvent(id, reason) {
+  return authFetch(`/api/events/${id}/cancel`, { method: "PATCH", body: JSON.stringify({ reason }) });
+}
+
+export async function reassignEvent(id, newEventAdminId) {
+  return authFetch(`/api/events/${id}/reassign`, { method: "PATCH", body: JSON.stringify({ newEventAdminId }) });
 }
 
 // ---------------------------------------------------------------------------
@@ -126,4 +130,43 @@ export async function getMe() {
 export async function logout() {
   localStorage.removeItem("relay_auth_token");
   return { ok: true };
+}
+// ---------------------------------------------------------------------------
+// Registrations
+// ---------------------------------------------------------------------------
+
+export async function registerForEvent(eventId) {
+  return authFetch(`/api/events/${eventId}/registrations`, { method: "POST" });
+}
+
+export async function cancelRegistration(eventId, registrationId) {
+  return authFetch(`/api/events/${eventId}/registrations/${registrationId}/cancel`, { method: "POST" });
+}
+
+export async function approveRegistration(eventId, registrationId) {
+  return authFetch(`/api/events/${eventId}/registrations/${registrationId}/approve`, { method: "POST" });
+}
+
+export async function rejectRegistration(eventId, registrationId, reason) {
+  return authFetch(`/api/events/${eventId}/registrations/${registrationId}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function getEventRegistrations(eventId, status, page = 0, size = 10) {
+  const params = new URLSearchParams({ page, size });
+  if (status) params.append("status", status);
+  return authFetch(`/api/events/${eventId}/registrations?${params.toString()}`);
+}
+
+export async function getMyRegistrations() {
+  return authFetch("/api/participants/me/registrations");
+}
+
+export async function inviteParticipants(eventId, participantIds) {
+  return authFetch(`/api/events/${eventId}/invites`, {
+    method: "POST",
+    body: JSON.stringify({ participantIds }),
+  });
 }

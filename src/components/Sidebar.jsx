@@ -66,10 +66,16 @@ export default function Sidebar() {
 
       {/* Bottom nav */}
       <div className="relay-nav">
-        <div className="relay-nav-item active">
+        <div className="relay-nav-item active" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
           <LayoutDashboard size={13} />
           {NAV_LABEL[role] || "Dashboard"}
         </div>
+        {role === "PARTICIPANT" && (
+          <div className="relay-nav-item" onClick={() => navigate("/my-registrations")} style={{ cursor: "pointer" }}>
+            <CalendarClock size={13} />
+            My Registrations
+          </div>
+        )}
         <button
           className="relay-nav-item"
           onClick={handleLogout}

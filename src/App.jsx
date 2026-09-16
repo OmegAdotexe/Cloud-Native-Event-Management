@@ -7,6 +7,7 @@ import AdminPage from "./pages/AdminPage.jsx";
 import ParticipantPage from "./pages/ParticipantPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
+import MyRegistrationsPage from "./pages/MyRegistrationsPage.jsx";
 
 function ProtectedRoute({ children }) {
   const { token, isLoading } = useAuth();
@@ -38,9 +39,14 @@ function MainApp() {
   return <div className="relay-root relay-scroll" style={{ height: "720px" }}>
     <Sidebar />
     <div className="relay-main">
-      {role === "EVENT_ADMIN" && <AdminPage {...shared} />}
-      {role === "PARTICIPANT" && <ParticipantPage {...shared} />}
-      {role === "SUPER_ADMIN" && <AdminPage {...shared} />}
+      <Routes>
+        <Route path="/" element={<>
+          {role === "EVENT_ADMIN" && <AdminPage {...shared} />}
+          {role === "PARTICIPANT" && <ParticipantPage {...shared} />}
+          {role === "SUPER_ADMIN" && <AdminPage {...shared} />}
+        </>} />
+        {role === "PARTICIPANT" && <Route path="/my-registrations" element={<MyRegistrationsPage />} />}
+      </Routes>
     </div>
   </div>;
 }

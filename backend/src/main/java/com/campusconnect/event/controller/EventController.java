@@ -1,8 +1,11 @@
 package com.campusconnect.event.controller;
 
+import com.campusconnect.event.dto.CancelEventRequest;
 import com.campusconnect.event.dto.CreateEventRequest;
 import com.campusconnect.event.dto.EventResponse;
+import com.campusconnect.event.dto.ReassignEventRequest;
 import com.campusconnect.event.dto.UpdateEventRequest;
+import com.campusconnect.event.model.EventCategory;
 import com.campusconnect.event.service.EventService;
 import com.campusconnect.user.model.User;
 import jakarta.validation.Valid;
@@ -29,8 +32,9 @@ public class EventController {
     }
 
     @GetMapping
-    public ResponseEntity<List<EventResponse>> getAll(@AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(eventService.getAllEvents(user));
+    public ResponseEntity<List<EventResponse>> getAll(@RequestParam(required = false) EventCategory category,
+                                                      @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(eventService.getAllEvents(user, category));
     }
 
     @GetMapping("/{id}")
@@ -60,7 +64,16 @@ public class EventController {
 
     @PatchMapping("/{id}/cancel")
     @PreAuthorize("hasAnyRole('EVENT_ADMIN', 'SUPER_ADMIN')")
-    public ResponseEntity<EventResponse> cancel(@PathVariable Long id, @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(eventService.cancelEvent(id, user));
+    public ResponseEntity<EventResponse> cancel(@PathVariable Long id, @Valid @RequestBody CancelEventRequest request,
+                                                 @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(eventService.cancelEvent(id, request, user));
+    }
+
+    @PatchMapping("/{id}/reassign")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<EventResponse> reassign(@PathVariable Long id,
+                                                  @Valid @RequestBody ReassignEventRequest request,
+                                                  @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(eventService.reassignEvent(id, request, user));
     }
 }

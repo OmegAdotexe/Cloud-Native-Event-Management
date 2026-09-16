@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext.jsx";
 import * as relayApi from "../api/relayApi.js";
 import EventCard from "../components/EventCard.jsx";
+import AdminRegistrations from "../components/AdminRegistrations.jsx";
 
-const initialForm = { title: "", description: "", venue: "", startTime: "", endTime: "", capacity: 1, status: "DRAFT" };
+const initialForm = { title: "", description: "", venueName: "", isVirtual: false, virtualLink: "", startTime: "", endTime: "", registrationDeadline: "", capacity: 1, status: "DRAFT", registrationMode: "OPEN", category: "OTHER", waitlistEnabled: false };
 const toInputTime = (value) => value ? value.slice(0, 16) : "";
 
 export default function AdminPage({ events, isLoading, error, onRefresh }) {
@@ -16,7 +17,7 @@ export default function AdminPage({ events, isLoading, error, onRefresh }) {
   const selected = events.find((event) => event.id === selectedId);
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
-  const edit = (event) => { setSelectedId(event.id); setActionError(""); setForm({ ...event, startTime: toInputTime(event.startTime), endTime: toInputTime(event.endTime) }); };
+  const edit = (event) => { setSelectedId(event.id); setActionError(""); setForm({ ...event, startTime: toInputTime(event.startTime), endTime: toInputTime(event.endTime), registrationDeadline: toInputTime(event.registrationDeadline) }); };
   const reset = () => { setSelectedId(null); setForm(initialForm); setActionError(""); };
   const save = async (event) => {
     event.preventDefault(); setSaving(true); setActionError("");
@@ -24,7 +25,7 @@ export default function AdminPage({ events, isLoading, error, onRefresh }) {
     catch (err) { setActionError(err.message || "Unable to save event."); }
     finally { setSaving(false); }
   };
-  const transition = async (action) => { setSaving(true); setActionError(""); try { await action(selected.id); await onRefresh(); } catch (err) { setActionError(err.message || "Unable to update event."); } finally { setSaving(false); } };
+  const transition = async (action, data = null) => { setSaving(true); setActionError(""); try { data !== null ? await action(selected.id, data) : await action(selected.id); await onRefresh(); } catch (err) { setActionError(err.message || "Unable to update event."); } finally { setSaving(false); } };
 
   return <>
     <div className="relay-topbar"><div><h1>Hi, {user?.name || "there"}</h1><p>{isSuperAdmin ? "Create and manage every event across the platform." : "Create and manage your campus events."}</p></div></div>
@@ -36,11 +37,33 @@ export default function AdminPage({ events, isLoading, error, onRefresh }) {
       <div className="relay-feed-title">{selected ? `Edit ${selected.title}` : "Create event"}</div>
       {actionError && <div className="relay-empty">{actionError}</div>}
       <form onSubmit={save}>
-        {[['title','Title','text'], ['venue','Venue','text'], ['startTime','Start time','datetime-local'], ['endTime','End time','datetime-local'], ['capacity','Capacity','number']].map(([key,label,type]) => <div key={key} style={{ marginTop: 9 }}><label className="relay-field-label">{label}</label><input className="relay-input" type={type} min={key === 'capacity' ? 1 : undefined} value={form[key]} onChange={(e) => update(key, key === 'capacity' ? Number(e.target.value) : e.target.value)} required /></div>)}
+        {[['title','Title','text'], ['venueName','Venue Name','text'], ['startTime','Start time','datetime-local'], ['endTime','End time','datetime-local'], ['registrationDeadline', 'Registration Deadline', 'datetime-local'], ['capacity','Capacity','number']].map(([key,label,type]) => <div key={key} style={{ marginTop: 9 }}><label className="relay-field-label">{label}</label><input className="relay-input" type={type} min={key === 'capacity' ? 1 : undefined} value={form[key]} onChange={(e) => update(key, key === 'capacity' ? Number(e.target.value) : e.target.value)} required /></div>)}
+        <div style={{ marginTop: 9 }}><label className="relay-field-label">Virtual Link</label><input className="relay-input" type="text" value={form.virtualLink || ""} onChange={(e) => update('virtualLink', e.target.value)} /></div>
+        <div style={{ marginTop: 9 }}><label className="relay-field-label"><input type="checkbox" checked={form.isVirtual || false} onChange={(e) => update('isVirtual', e.target.checked)} /> Is Virtual</label></div>
+        <div style={{ marginTop: 9 }}><label className="relay-field-label"><input type="checkbox" checked={form.waitlistEnabled || false} onChange={(e) => update('waitlistEnabled', e.target.checked)} /> Enable Waitlist</label></div>
+        <div style={{ marginTop: 9 }}>
+            <label className="relay-field-label">Registration Mode</label>
+            <select className="relay-input" value={form.registrationMode} onChange={(e) => update('registrationMode', e.target.value)}>
+                <option value="OPEN">OPEN</option>
+                <option value="INVITE_ONLY">INVITE_ONLY</option>
+                <option value="APPROVAL_REQUIRED">APPROVAL_REQUIRED</option>
+            </select>
+        </div>
+        <div style={{ marginTop: 9 }}>
+            <label className="relay-field-label">Category</label>
+            <select className="relay-input" value={form.category} onChange={(e) => update('category', e.target.value)}>
+                <option value="WORKSHOP">WORKSHOP</option>
+                <option value="SEMINAR">SEMINAR</option>
+                <option value="CULTURAL">CULTURAL</option>
+                <option value="SPORTS">SPORTS</option>
+                <option value="OTHER">OTHER</option>
+            </select>
+        </div>
         <div style={{ marginTop: 9 }}><label className="relay-field-label">Description</label><textarea className="relay-input" value={form.description || ""} onChange={(e) => update('description', e.target.value)} /></div>
         <button className="relay-btn" disabled={saving} style={{ marginTop: 12 }}>{saving ? "Saving..." : selected ? "Save changes" : "Create draft"}</button>
       </form>
-      {selected && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><button className="relay-btn" disabled={saving || selected.status === "PUBLISHED"} onClick={() => transition(relayApi.publishEvent)}>Publish</button><button className="relay-btn" disabled={saving || selected.status === "CANCELLED"} onClick={() => transition(relayApi.cancelEvent)}>Cancel</button><button className="relay-btn" disabled={saving} onClick={() => transition(relayApi.deleteEvent)}>Delete</button></div>}
+      {selected && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><button className="relay-btn" disabled={saving || selected.status === "PUBLISHED"} onClick={() => transition(relayApi.publishEvent)}>Publish</button><button className="relay-btn" disabled={saving || selected.status === "CANCELLED"} onClick={() => { const reason = window.prompt("Reason for cancellation?"); if(reason) transition(relayApi.cancelEvent, reason); }}>Cancel</button><button className="relay-btn" disabled={saving} onClick={() => transition(relayApi.deleteEvent)}>Delete</button></div>}
+      {selected && <AdminRegistrations event={selected} />}
     </div></div></div>
   </>;
 }

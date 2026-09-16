@@ -42,7 +42,7 @@ public ResponseEntity<Map<String, Object>> handleAccessDeniedException(
         log.error("Unhandled application exception", ex);
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", LocalDateTime.now());
-        body.put("message", "An unexpected error occurred");
+        body.put("message", "Unexpected: " + ex.getClass().getSimpleName() + " - " + ex.getMessage());
         body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
         return new ResponseEntity<>(body, HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -72,6 +72,15 @@ public ResponseEntity<Map<String, Object>> handleAccessDeniedException(
         body.put("message", ex.getMessage());
         body.put("status", HttpStatus.BAD_REQUEST.value());
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalStateException(IllegalStateException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("message", ex.getMessage());
+        body.put("status", HttpStatus.CONFLICT.value());
+        return new ResponseEntity<>(body, HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(org.springframework.security.authentication.BadCredentialsException.class)

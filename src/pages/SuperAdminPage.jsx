@@ -11,7 +11,7 @@ export default function SuperAdminPage({ events, isLoading, error }) {
       {isLoading && <div className="relay-empty">Loading events...</div>}
       {error && <div className="relay-empty">{error}</div>}
       {!isLoading && !error && events.length === 0 && <div className="relay-empty">No events yet.</div>}
-      {events.map((event) => <div key={event.id} className="relay-card" style={{ marginBottom: 8 }}><strong>{event.title}</strong><div className="relay-event-meta">{event.status} · {event.venue} · {new Date(event.startTime).toLocaleString()}</div></div>)}
+      {events.map((event) => <div key={event.id} className="relay-card" style={{ marginBottom: 8 }}><strong>{event.title}</strong><div className="relay-event-meta">{event.status} · {event.isVirtual ? 'Virtual' : event.venueName} · {new Date(event.startTime).toLocaleString()}</div></div>)}
     </div>
   </>;
 }

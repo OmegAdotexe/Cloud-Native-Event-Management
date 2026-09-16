@@ -25,14 +25,21 @@ public class Event {
     @Column(length = 4000)
     private String description;
 
-    @Column(nullable = false)
-    private String venue;
+    @Column(name = "venue")
+    private String venueName;
+
+    @Builder.Default
+    private Boolean isVirtual = false;
+
+    private String virtualLink;
 
     @Column(nullable = false)
     private LocalDateTime startTime;
 
     @Column(nullable = false)
     private LocalDateTime endTime;
+
+    private LocalDateTime registrationDeadline;
 
     @Column(nullable = false)
     private Integer capacity;
@@ -41,9 +48,25 @@ public class Event {
     @Column(nullable = false)
     private EventStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private RegistrationMode registrationMode = RegistrationMode.OPEN;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private EventCategory category = EventCategory.OTHER;
+
+    @Builder.Default
+    private Boolean waitlistEnabled = false;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "created_by_id", nullable = false)
     private User createdBy;
+
+    @Column(length = 500)
+    private String cancelledReason;
+
+    private LocalDateTime cancelledAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

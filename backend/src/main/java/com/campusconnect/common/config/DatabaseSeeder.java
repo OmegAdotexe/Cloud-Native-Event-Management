@@ -18,7 +18,7 @@ public class DatabaseSeeder {
     private final PasswordEncoder passwordEncoder;
 
     @Bean
-    @Profile("!test") // Do not run in test environments to avoid side effects
+    @Profile("dev") // Demo accounts must never be created in an arbitrary environment.
     public CommandLineRunner seedDatabase() {
         return args -> {
             if (!userRepository.existsByEmail("superadmin@example.com")) {

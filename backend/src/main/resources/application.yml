@@ -2,6 +2,9 @@ server:
   port: ${SERVER_PORT:8080}
 
 spring:
+  config:
+    import: optional:file:../.env[.properties],optional:file:.env[.properties]
+
   application:
     name: campusconnect-backend
 
@@ -12,9 +15,10 @@ spring:
     driver-class-name: org.postgresql.Driver
 
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
@@ -35,5 +39,5 @@ management:
       show-details: always
 
 jwt:
-  secret: ${JWT_SECRET:default_super_secret_jwt_key_that_is_long_enough_for_hs256_alg}
+  secret: ${JWT_SECRET}
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}

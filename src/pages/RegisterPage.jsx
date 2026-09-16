@@ -23,8 +23,7 @@ export default function RegisterPage() {
     }
 
     try {
-      // Role is hardcoded to PARTICIPANT to prevent privileged account creation
-      await register({ name, email, password, role: "PARTICIPANT" });
+      await register({ name, email, password });
       navigate("/login");
     } catch (err) {
       setLocalError(err.message || "Failed to register.");

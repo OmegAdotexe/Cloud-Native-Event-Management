@@ -45,16 +45,41 @@ async function authFetch(endpoint, options = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// Events (Stubbed for now, as Prompt 4 says "Do not implement Event Management yet")
+// Events
 // ---------------------------------------------------------------------------
-import { initialEvents } from "../data/mockData.js";
 
 export async function getEvents() {
-  return structuredClone(initialEvents);
+  return authFetch("/api/events");
 }
 
-export async function patchEvent(id, patch) {
-  return { id, ...patch };
+export async function getEventById(id) {
+  return authFetch(`/api/events/${id}`);
+}
+
+export async function createEvent(data) {
+  return authFetch("/api/events", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateEvent(id, data) {
+  return authFetch(`/api/events/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteEvent(id) {
+  return authFetch(`/api/events/${id}`, { method: "DELETE" });
+}
+
+export async function publishEvent(id) {
+  return authFetch(`/api/events/${id}/publish`, { method: "PATCH" });
+}
+
+export async function cancelEvent(id) {
+  return authFetch(`/api/events/${id}/cancel`, { method: "PATCH" });
 }
 
 // ---------------------------------------------------------------------------

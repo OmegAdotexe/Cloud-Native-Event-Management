@@ -5,9 +5,8 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public class RegistrationCancelledEvent {
+public class RegistrationPendingEvent {
     private final Long registrationId;
     private final Long eventId;
     private final Long participantId;
-    private final String reason;
 }

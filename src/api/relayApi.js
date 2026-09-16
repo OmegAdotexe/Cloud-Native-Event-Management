@@ -107,6 +107,34 @@ export async function markAllNotificationsRead() {
 }
 
 // ---------------------------------------------------------------------------
+// Timeline
+// ---------------------------------------------------------------------------
+
+export async function getTimeline(eventId) {
+  return authFetch(`/api/events/${eventId}/timeline`, { method: "GET" });
+}
+
+export async function createTimelineItem(eventId, data) {
+  return authFetch(`/api/events/${eventId}/timeline`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateTimelineItem(eventId, itemId, data) {
+  return authFetch(`/api/events/${eventId}/timeline/${itemId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteTimelineItem(eventId, itemId) {
+  return authFetch(`/api/events/${eventId}/timeline/${itemId}`, {
+    method: "DELETE",
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Auth
 // ---------------------------------------------------------------------------
 
@@ -151,8 +179,11 @@ export async function registerForEvent(eventId) {
   return authFetch(`/api/events/${eventId}/registrations`, { method: "POST" });
 }
 
-export async function cancelRegistration(eventId, registrationId) {
-  return authFetch(`/api/events/${eventId}/registrations/${registrationId}/cancel`, { method: "POST" });
+export async function cancelRegistration(eventId, registrationId, reason) {
+  return authFetch(`/api/events/${eventId}/registrations/${registrationId}/cancel`, { 
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
 }
 
 export async function approveRegistration(eventId, registrationId) {

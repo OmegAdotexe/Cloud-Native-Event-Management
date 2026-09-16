@@ -31,8 +31,10 @@ public class RegistrationController {
     public ResponseEntity<RegistrationResponse> cancelRegistration(
             @PathVariable Long eventId,
             @PathVariable Long id,
+            @RequestBody(required = false) com.campusconnect.event.dto.CancelRegistrationRequest request,
             @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(registrationService.cancelRegistration(eventId, id, user));
+        String reason = (request != null) ? request.getReason() : null;
+        return ResponseEntity.ok(registrationService.cancelRegistration(eventId, id, user, reason));
     }
 
     @PostMapping("/{eventId}/registrations/{id}/approve")

@@ -91,13 +91,19 @@ public class RegistrationService {
                     event.getId(),
                     participant.getId()
             ));
+        } else if (savedRegistration.getStatus() == RegistrationStatus.PENDING) {
+            eventPublisher.publishEvent(new com.campusconnect.event.model.RegistrationPendingEvent(
+                    savedRegistration.getId(),
+                    event.getId(),
+                    participant.getId()
+            ));
         }
 
         return toResponse(savedRegistration);
     }
 
     @Transactional
-    public RegistrationResponse cancelRegistration(Long eventId, Long registrationId, User requester) {
+    public RegistrationResponse cancelRegistration(Long eventId, Long registrationId, User requester, String reason) {
         Event event = eventRepository.findByIdForUpdate(eventId)
                 .orElseThrow(() -> new EntityNotFoundException("Event not found"));
 
@@ -122,7 +128,8 @@ public class RegistrationService {
         eventPublisher.publishEvent(new RegistrationCancelledEvent(
                 registration.getId(),
                 event.getId(),
-                registration.getParticipant().getId()
+                registration.getParticipant().getId(),
+                reason
         ));
 
         if (oldStatus == RegistrationStatus.CONFIRMED && event.getWaitlistEnabled()) {

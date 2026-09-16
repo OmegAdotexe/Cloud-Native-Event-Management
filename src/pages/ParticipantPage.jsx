@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { CalendarClock, MapPin } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext.jsx";
 import * as relayApi from "../api/relayApi.js";
+import TimelineDisplay from "../components/TimelineDisplay.jsx";
 
 export default function ParticipantPage({ events, isLoading, error }) {
   const { user } = useAuth();
@@ -73,6 +74,8 @@ export default function ParticipantPage({ events, isLoading, error }) {
             
             {event.description && <p className="relay-meta-item" style={{ marginTop: "8px" }}>{event.description}</p>}
             
+            <TimelineDisplay event={event} />
+
             <div style={{ marginTop: 12, borderTop: "1px solid var(--border)", paddingTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: "12px", color: "var(--mute)" }}>
                 <div style={{ marginBottom: "2px" }}>Capacity: {event.capacity} {event.waitlistEnabled ? "(Waitlist enabled)" : ""}</div>

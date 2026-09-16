@@ -3,6 +3,7 @@ import { useAuth } from "../contexts/AuthContext.jsx";
 import * as relayApi from "../api/relayApi.js";
 import EventCard from "../components/EventCard.jsx";
 import AdminRegistrations from "../components/AdminRegistrations.jsx";
+import AdminTimeline from "../components/AdminTimeline.jsx";
 
 const initialForm = { title: "", description: "", venueName: "", isVirtual: false, virtualLink: "", startTime: "", endTime: "", registrationDeadline: "", capacity: 1, status: "DRAFT", registrationMode: "OPEN", category: "OTHER", waitlistEnabled: false };
 const toInputTime = (value) => value ? value.slice(0, 16) : "";
@@ -64,6 +65,7 @@ export default function AdminPage({ events, isLoading, error, onRefresh }) {
       </form>
       {selected && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><button className="relay-btn" disabled={saving || selected.status === "PUBLISHED"} onClick={() => transition(relayApi.publishEvent)}>Publish</button><button className="relay-btn" disabled={saving || selected.status === "CANCELLED"} onClick={() => { const reason = window.prompt("Reason for cancellation?"); if(reason) transition(relayApi.cancelEvent, reason); }}>Cancel</button><button className="relay-btn" disabled={saving} onClick={() => transition(relayApi.deleteEvent)}>Delete</button></div>}
       {selected && <AdminRegistrations event={selected} />}
+      {selected && <AdminTimeline event={selected} />}
     </div></div></div>
   </>;
 }

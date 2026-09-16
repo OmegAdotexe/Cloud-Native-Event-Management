@@ -9,11 +9,13 @@ const ICONS = {
   REGISTRATION_WAITLISTED: <CalendarClock size={16} color="#f59e0b" />,
   REGISTRATION_REJECTED: <XCircle size={16} color="#ef4444" />,
   REGISTRATION_CANCELLED: <XCircle size={16} color="#ef4444" />,
+  REGISTRATION_PENDING: <Info size={16} color="#f59e0b" />,
   EVENT_PUBLISHED: <BellRing size={16} color="#6366f1" />,
   EVENT_CANCELLED: <XCircle size={16} color="#ef4444" />,
   EVENT_VENUE_CHANGED: <Info size={16} color="#3b82f6" />,
   EVENT_TIME_CHANGED: <Info size={16} color="#3b82f6" />,
-  EVENT_UPDATED: <Info size={16} color="#3b82f6" />
+  EVENT_UPDATED: <Info size={16} color="#3b82f6" />,
+  TIMELINE_UPDATED: <CalendarClock size={16} color="#3b82f6" />
 };
 
 export default function NotificationsPage() {

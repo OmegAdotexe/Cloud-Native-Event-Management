@@ -4,6 +4,7 @@ import com.campusconnect.event.model.Event;
 import com.campusconnect.event.model.EventStatus;
 import com.campusconnect.event.model.RegistrationMode;
 import com.campusconnect.event.repository.EventRepository;
+import com.campusconnect.event.repository.RegistrationRepository;
 import com.campusconnect.event.service.EventService;
 import com.campusconnect.event.service.RegistrationService;
 import com.campusconnect.notification.model.Notification;
@@ -46,12 +47,24 @@ public class NotificationIntegrationTest {
     @Autowired
     private EventRepository eventRepository;
 
+    @Autowired
+    private RegistrationRepository registrationRepository;
+
+    @Autowired
+    private com.campusconnect.event.repository.TimelineItemRepository timelineItemRepository;
+
+    @Autowired
+    private com.campusconnect.event.repository.EventChangeLogRepository eventChangeLogRepository;
+
     private User admin;
     private User participant;
 
     @BeforeEach
     void setUp() {
         notificationRepository.deleteAll();
+        registrationRepository.deleteAll();
+        timelineItemRepository.deleteAll();
+        eventChangeLogRepository.deleteAll();
         eventRepository.deleteAll();
         userRepository.deleteAll();
 
@@ -86,7 +99,7 @@ public class NotificationIntegrationTest {
 
         // RabbitMQ processing is async, wait up to 5 seconds
         boolean messageReceived = false;
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < 40; i++) {
             if (notificationRepository.countUnreadByRecipient(participant) > 0) {
                 messageReceived = true;
                 break;

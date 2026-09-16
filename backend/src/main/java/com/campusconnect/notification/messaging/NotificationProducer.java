@@ -11,6 +11,8 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.util.List;
 import java.util.UUID;
@@ -24,20 +26,37 @@ public class NotificationProducer {
     private final RegistrationRepository registrationRepository;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleRegistrationConfirmed(RegistrationConfirmedEvent event) {
         log.info("Sending REGISTRATION_CONFIRMED notification for registrationId: {}", event.getRegistrationId());
-        sendNotification(event.getParticipantId(), event.getEventId(), NotificationType.REGISTRATION_CONFIRMED, 
-                "Registration Confirmed", "Your registration has been confirmed.");
+        registrationRepository.findById(event.getRegistrationId()).ifPresent(registration -> {
+            sendNotification(event.getParticipantId(), event.getEventId(), NotificationType.REGISTRATION_CONFIRMED, 
+                    "Registration Confirmed", "Your registration has been confirmed for: " + registration.getEvent().getTitle());
+        });
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleRegistrationWaitlisted(RegistrationWaitlistedEvent event) {
         log.info("Sending REGISTRATION_WAITLISTED notification for registrationId: {}", event.getRegistrationId());
-        sendNotification(event.getParticipantId(), event.getEventId(), NotificationType.REGISTRATION_WAITLISTED,
-                "Waitlist Joined", "You have been placed on the waitlist for this event.");
+        registrationRepository.findById(event.getRegistrationId()).ifPresent(registration -> {
+            sendNotification(event.getParticipantId(), event.getEventId(), NotificationType.REGISTRATION_WAITLISTED,
+                    "Waitlist Joined", "You have been placed on the waitlist for: " + registration.getEvent().getTitle());
+        });
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void handleRegistrationPending(RegistrationPendingEvent event) {
+        log.info("Sending REGISTRATION_PENDING admin notification for registrationId: {}", event.getRegistrationId());
+        registrationRepository.findById(event.getRegistrationId()).ifPresent(registration -> {
+            sendNotification(registration.getEvent().getCreatedBy().getId(), event.getEventId(), NotificationType.REGISTRATION_PENDING,
+                    "Registration Pending Approval", registration.getParticipant().getName() + " has requested to join: " + registration.getEvent().getTitle());
+        });
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleRegistrationRejected(RegistrationRejectedEvent event) {
         log.info("Sending REGISTRATION_REJECTED notification for registrationId: {}", event.getRegistrationId());
         sendNotification(event.getParticipantId(), event.getEventId(), NotificationType.REGISTRATION_REJECTED,
@@ -45,13 +64,21 @@ public class NotificationProducer {
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleRegistrationCancelled(RegistrationCancelledEvent event) {
         log.info("Sending REGISTRATION_CANCELLED notification for registrationId: {}", event.getRegistrationId());
-        sendNotification(event.getParticipantId(), event.getEventId(), NotificationType.REGISTRATION_CANCELLED,
-                "Registration Cancelled", "Your registration for this event has been cancelled.");
+        registrationRepository.findById(event.getRegistrationId()).ifPresent(registration -> {
+            String msg = "Your registration for " + registration.getEvent().getTitle() + " has been cancelled.";
+            if (event.getReason() != null && !event.getReason().trim().isEmpty()) {
+                msg = "Your registration for " + registration.getEvent().getTitle() + " was cancelled by an admin. Reason: " + event.getReason();
+            }
+            sendNotification(event.getParticipantId(), event.getEventId(), NotificationType.REGISTRATION_CANCELLED,
+                    "Registration Cancelled", msg);
+        });
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleEventPublished(EventPublishedEvent event) {
         log.info("Event {} published. Not sending global broadcast per requirements.", event.getEventId());
         // Per requirements: "Only trigger notifications for affected participants where appropriate. Do not send notifications to every user indiscriminately."
@@ -59,6 +86,7 @@ public class NotificationProducer {
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleEventCancelled(EventCancelledEvent event) {
         log.info("Event {} cancelled. Notifying active participants.", event.getEventId());
         // Find all active participants and notify them
@@ -70,10 +98,21 @@ public class NotificationProducer {
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleEventUpdated(EventUpdatedEvent event) {
         log.info("Event {} updated. Notifying active participants.", event.getEventId());
         StringBuilder message = new StringBuilder("The following details were updated for " + event.getTitle() + ": ");
-        event.getChanges().forEach((k, v) -> message.append(k).append(" (").append(v).append("), "));
+        
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("MMM dd, yyyy h:mm a");
+        event.getChanges().forEach((k, v) -> {
+            String displayVal = v;
+            if (k.toLowerCase().contains("time") && v.contains("T")) {
+                try {
+                    displayVal = java.time.LocalDateTime.parse(v).format(formatter);
+                } catch (Exception ignored) { }
+            }
+            message.append(k).append(" to '").append(displayVal).append("', ");
+        });
         
         NotificationType type = NotificationType.EVENT_UPDATED;
         if (event.getChanges().containsKey("venue")) type = NotificationType.EVENT_VENUE_CHANGED;
@@ -84,6 +123,35 @@ public class NotificationProducer {
                 .forEach(registration -> {
                     sendNotification(registration.getParticipant().getId(), event.getEventId(), finalType,
                             "Event Details Updated: " + event.getTitle(), message.toString());
+                });
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void handleTimelineItemCreated(TimelineItemCreatedEvent event) {
+        log.info("TimelineItem created for event {}. Notifying active participants.", event.getEventId());
+        notifyTimelineChange(event.getEventId(), "Schedule Updated: " + event.getTitle(), "A new timeline item was added to the schedule.");
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void handleTimelineItemUpdated(TimelineItemUpdatedEvent event) {
+        log.info("TimelineItem updated for event {}. Notifying active participants.", event.getEventId());
+        notifyTimelineChange(event.getEventId(), "Schedule Updated: " + event.getTitle(), "A timeline item was updated in the schedule.");
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void handleTimelineItemDeleted(TimelineItemDeletedEvent event) {
+        log.info("TimelineItem deleted for event {}. Notifying active participants.", event.getEventId());
+        notifyTimelineChange(event.getEventId(), "Schedule Updated: " + event.getTitle(), "A timeline item was removed from the schedule.");
+    }
+
+    private void notifyTimelineChange(Long eventId, String title, String message) {
+        registrationRepository.findByEventIdAndStatusNotIn(eventId, List.of(RegistrationStatus.CANCELLED, RegistrationStatus.REJECTED))
+                .forEach(registration -> {
+                    sendNotification(registration.getParticipant().getId(), eventId, NotificationType.TIMELINE_UPDATED,
+                            title, message);
                 });
     }
 

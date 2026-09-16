@@ -53,6 +53,13 @@ export default function AdminRegistrations({ event }) {
     }
   };
 
+  const handleCancel = (id) => {
+    const reason = window.prompt("Reason for cancellation (optional, max 500 chars):");
+    if (reason !== null) {
+      handleAction(relayApi.cancelRegistration, id, reason);
+    }
+  };
+
   const handleInvite = async (e) => {
     e.preventDefault();
     const ids = inviteIds.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
@@ -156,6 +163,17 @@ export default function AdminRegistrations({ event }) {
                     onClick={() => handleReject(reg.id)}
                     style={{ padding: "4px 8px", fontSize: "12px", backgroundColor: "#ef4444" }}
                   >Reject</button>
+                </div>
+              )}
+              
+              {(reg.status === 'CONFIRMED' || reg.status === 'WAITLISTED') && (
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button 
+                    className="relay-btn" 
+                    disabled={actionLoading}
+                    onClick={() => handleCancel(reg.id)}
+                    style={{ padding: "4px 8px", fontSize: "12px", backgroundColor: "#f59e0b" }}
+                  >Cancel</button>
                 </div>
               )}
             </div>

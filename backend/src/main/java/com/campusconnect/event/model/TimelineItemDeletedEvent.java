@@ -5,9 +5,8 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public class RegistrationCancelledEvent {
-    private final Long registrationId;
+public class TimelineItemDeletedEvent {
     private final Long eventId;
-    private final Long participantId;
-    private final String reason;
+    private final Long timelineItemId;
+    private final String title;
 }

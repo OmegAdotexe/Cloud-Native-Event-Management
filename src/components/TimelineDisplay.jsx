@@ -38,15 +38,15 @@ export default function TimelineDisplay({ event }) {
     }
   };
 
-  if (loading) return <div style={{ marginTop: 24, fontSize: "0.9rem", color: "#888" }}>Loading schedule...</div>;
-  if (error) return <div style={{ marginTop: 24, fontSize: "0.9rem", color: "#ff4444" }}>{error}</div>;
+  if (loading) return <div style={{ marginTop: 24, fontSize: "13px", color: "var(--mute)" }}>Loading schedule...</div>;
+  if (error) return <div style={{ marginTop: 24, fontSize: "13px", color: "var(--coral)" }}>{error}</div>;
 
   return (
     <div style={{ marginTop: 24 }}>
-      <h3 style={{ fontSize: "1.1rem", marginBottom: 16 }}>Schedule & Timeline</h3>
+      <h3 style={{ fontSize: "15px", fontWeight: 600, marginBottom: 16, color: "var(--text)" }}>Schedule & Timeline</h3>
       
       <div style={{ display: "flex", flexDirection: "column", gap: 16, position: "relative", paddingLeft: 12 }}>
-        <div style={{ position: "absolute", left: 15, top: 10, bottom: 10, width: 2, background: "#333" }} />
+        <div style={{ position: "absolute", left: 15, top: 10, bottom: 10, width: 2, background: "var(--border)" }} />
         
         {items.map(item => {
           const isPast = new Date(item.startTime).getTime() < Date.now();
@@ -55,20 +55,22 @@ export default function TimelineDisplay({ event }) {
             <div key={item.id} style={{ position: "relative", paddingLeft: 24 }}>
               <div style={{
                 position: "absolute", left: -4, top: 4, width: 10, height: 10, 
-                borderRadius: "50%", background: isPast ? "#00e676" : "#444", border: "2px solid #111"
+                borderRadius: "50%", 
+                background: isPast ? "var(--teal)" : "var(--border)", 
+                border: "2px solid var(--surface)"
               }} />
               
-              <div style={{ fontWeight: "600", color: isPast ? "#ddd" : "#fff" }}>
+              <div style={{ fontWeight: "600", color: "var(--text)", fontSize: "13.5px" }}>
                 {item.title}
               </div>
               
-              <div style={{ fontSize: "0.85rem", color: "#00e676", marginTop: 4 }}>
+              <div style={{ fontSize: "12px", color: isPast ? "var(--teal)" : "var(--mute)", marginTop: 4 }}>
                 {new Date(item.startTime).toLocaleString()}
                 {item.endTime && ` - ${new Date(item.endTime).toLocaleString()}`}
               </div>
               
               {item.description && (
-                <div style={{ fontSize: "0.9rem", color: "#888", marginTop: 4 }}>
+                <div style={{ fontSize: "12.5px", color: "var(--text-secondary)", marginTop: 4 }}>
                   {item.description}
                 </div>
               )}

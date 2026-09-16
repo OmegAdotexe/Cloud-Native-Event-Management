@@ -1,54 +1,75 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 /* ── Reset & root ──────────────────────────────────────────────── */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
   margin: 0;
   padding: 0;
-  background: #0a0f1c;
+  background: #F0EDE8;
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
   width: 100%;
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
+  min-height: 100vh;
 }
 
 /* ── Design tokens ─────────────────────────────────────────────── */
 .relay-root {
-  --ink: #0D1321;
-  --panel: #141B2E;
-  --panel-2: #1B2440;
-  --line: #262F4A;
-  --paper: #E9E7DF;
-  --mute: #8A93AC;
-  --amber: #F2A93C;
-  --teal: #4FB8A6;
-  --coral: #E2604F;
-  font-family: 'Inter', sans-serif;
-  background: var(--ink);
-  color: var(--paper);
-  min-height: 100%;
+  /* Neutral / off-white palette */
+  --bg: #F0EDE8;
+  --surface: #FFFFFF;
+  --surface-hover: #FAFAF8;
+  --sidebar-bg: #1C2131;
+  --sidebar-hover: #262C3F;
+  --sidebar-active: #2E364D;
+  --sidebar-text: #A0A5B8;
+  --sidebar-text-active: #FFFFFF;
+
+  --text: #2D3142;
+  --text-secondary: #5A607A;
+  --mute: #8B90A5;
+  --border: #E2DFD9;
+  --border-light: #EDEBE6;
+
+  /* Accents */
+  --amber: #E8943A;
+  --amber-light: #FFF4E6;
+  --teal: #2AAB8A;
+  --teal-light: #E6F7F2;
+  --coral: #E55A4F;
+  --coral-light: #FDE8E7;
+  --blue: #4A7BF7;
+  --blue-light: #EBF0FE;
+  --purple: #7C5CFC;
+  --purple-light: #F0ECFE;
+  --green: #2AAB8A;
+  --green-light: #E6F7F2;
+
+  /* Legacy token mapping for components that use old vars */
+  --ink: var(--bg);
+  --panel: var(--surface);
+  --panel-2: var(--surface-hover);
+  --line: var(--border);
+  --paper: var(--text);
+
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
   width: 100%;
-  max-width: 100%;
-  height: 100%;
   display: flex;
-  border-radius: 12px;
   overflow: hidden;
-  border: 1px solid var(--line);
 }
 
 .relay-mono {
@@ -61,96 +82,113 @@ body {
 
 /* ── Sidebar ───────────────────────────────────────────────────── */
 .relay-side {
-  width: 210px;
+  width: 230px;
   flex-shrink: 0;
-  background: var(--panel);
-  border-right: 1px solid var(--line);
+  background: var(--sidebar-bg);
   display: flex;
   flex-direction: column;
-  padding: 20px 14px;
-  gap: 22px;
+  padding: 24px 14px;
+  gap: 6px;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  overflow-y: auto;
 }
 
 .relay-logo {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 6px;
+  gap: 10px;
+  padding: 0 10px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 12px;
 }
 
 .relay-logo-mark {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  background: linear-gradient(135deg, var(--amber), var(--coral));
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--amber), #D47A20);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(232, 148, 58, 0.3);
 }
 
 .relay-logo-text {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  color: #FFFFFF;
 }
 
 .relay-logo-sub {
-  font-size: 10.5px;
-  color: var(--mute);
-  margin-top: -2px;
+  font-size: 11px;
+  color: var(--sidebar-text);
+  margin-top: -1px;
+  letter-spacing: 0.01em;
 }
 
+/* Sidebar — user info section */
 .relay-roles {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  margin-bottom: 8px;
 }
 
 .relay-role-label {
-  font-size: 10.5px;
-  color: var(--mute);
-  padding: 0 6px 2px;
-  text-transform: lowercase;
+  font-size: 10px;
+  color: var(--sidebar-text);
+  padding: 0 10px 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 500;
 }
 
 .relay-role-btn {
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
   cursor: pointer;
   font-size: 13px;
-  color: var(--mute);
+  color: var(--sidebar-text);
   border: 1px solid transparent;
-  transition: background .15s, color .15s;
+  transition: background .2s, color .2s;
   background: none;
 }
 
 .relay-role-btn:hover {
-  background: var(--panel-2);
-  color: var(--paper);
+  background: var(--sidebar-hover);
+  color: var(--sidebar-text-active);
 }
 
 .relay-role-btn.active {
-  background: var(--panel-2);
-  color: var(--paper);
-  border-color: var(--line);
+  background: var(--sidebar-active);
+  color: var(--sidebar-text-active);
+  border-color: rgba(255, 255, 255, 0.06);
 }
 
 .relay-role-btn.active .relay-role-dot {
   background: var(--amber);
+  box-shadow: 0 0 6px rgba(232, 148, 58, 0.5);
 }
 
 .relay-role-dot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: var(--line);
+  background: rgba(255, 255, 255, 0.15);
   flex-shrink: 0;
 }
 
+/* Sidebar — navigation */
 .relay-nav {
   display: flex;
   flex-direction: column;
@@ -161,16 +199,31 @@ body {
 .relay-nav-item {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 7px 10px;
-  border-radius: 8px;
-  font-size: 12.5px;
-  color: var(--mute);
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sidebar-text);
+  cursor: pointer;
+  transition: background .2s, color .2s;
+  text-decoration: none;
+}
+
+.relay-nav-item:hover {
+  background: var(--sidebar-hover);
+  color: var(--sidebar-text-active);
 }
 
 .relay-nav-item.active {
-  color: var(--paper);
-  background: var(--panel-2);
+  color: var(--sidebar-text-active);
+  background: var(--sidebar-active);
+}
+
+.relay-nav-separator {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 8px 10px;
 }
 
 /* ── Main layout ───────────────────────────────────────────────── */
@@ -179,71 +232,206 @@ body {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
 }
 
+/* ── Top header bar ────────────────────────────────────────────── */
+.relay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 28px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.relay-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 16px;
+  width: 420px;
+  color: var(--mute);
+  font-size: 13.5px;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.relay-search:focus-within {
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px rgba(232, 148, 58, 0.1);
+}
+
+.relay-search input {
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 13.5px;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+}
+
+.relay-search input::placeholder {
+  color: var(--mute);
+}
+
+.relay-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.relay-header-bell {
+  position: relative;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: color .2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+}
+
+.relay-header-bell:hover {
+  color: var(--text);
+  background: var(--bg);
+}
+
+.relay-header-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  background: var(--coral);
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+}
+
+.relay-header-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 12px 4px 4px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background .2s;
+}
+
+.relay-header-user:hover {
+  background: var(--bg);
+}
+
+.relay-header-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--amber), #D47A20);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+.relay-header-name {
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.relay-header-role {
+  font-size: 11.5px;
+  color: var(--mute);
+  line-height: 1.2;
+}
+
+/* ── Page topbar ───────────────────────────────────────────────── */
 .relay-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 22px;
-  border-bottom: 1px solid var(--line);
+  padding: 24px 28px 0;
 }
 
 .relay-topbar h1 {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 22px;
+  font-weight: 700;
   margin: 0;
+  color: var(--text);
+  letter-spacing: -0.02em;
 }
 
 .relay-topbar p {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--mute);
-  margin: 2px 0 0;
+  margin: 4px 0 0;
 }
 
 .relay-body {
   flex: 1;
   overflow: auto;
-  padding: 20px 22px;
+  padding: 20px 28px 28px;
 }
 
 .relay-grid {
   display: grid;
   grid-template-columns: 1fr 340px;
-  gap: 18px;
+  gap: 20px;
   align-items: start;
 }
 
 /* ── Cards ─────────────────────────────────────────────────────── */
 .relay-card {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: box-shadow .2s, border-color .2s;
+}
+
+.relay-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .relay-event-card {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 13px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
   cursor: pointer;
   margin-bottom: 8px;
-  transition: border-color .15s, background .15s;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .relay-event-card:hover {
-  border-color: #3A466B;
+  border-color: var(--amber);
+  box-shadow: 0 2px 8px rgba(232, 148, 58, 0.1);
 }
 
 .relay-event-card.active {
   border-color: var(--amber);
-  background: var(--panel-2);
+  background: var(--amber-light);
+  box-shadow: 0 2px 12px rgba(232, 148, 58, 0.12);
 }
 
 .relay-event-name {
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
+  color: var(--text);
 }
 
 .relay-event-meta {
@@ -257,47 +445,458 @@ body {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--mute);
+}
+
+/* ── Stat cards (dashboard) ────────────────────────────────────── */
+.relay-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.relay-stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  transition: box-shadow .2s;
+}
+
+.relay-stat-card:hover {
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
+}
+
+.relay-stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.relay-stat-icon.amber {
+  background: var(--amber-light);
+  color: var(--amber);
+}
+
+.relay-stat-icon.teal {
+  background: var(--teal-light);
+  color: var(--teal);
+}
+
+.relay-stat-icon.blue {
+  background: var(--blue-light);
+  color: var(--blue);
+}
+
+.relay-stat-icon.coral {
+  background: var(--coral-light);
+  color: var(--coral);
+}
+
+.relay-stat-icon.purple {
+  background: var(--purple-light);
+  color: var(--purple);
+}
+
+.relay-stat-icon.green {
+  background: var(--green-light);
+  color: var(--green);
+}
+
+.relay-stat-num {
+  font-size: 26px;
+  font-weight: 700;
+  font-family: 'Space Grotesk', sans-serif;
+  color: var(--text);
+  line-height: 1;
+}
+
+.relay-stat-label {
+  font-size: 12px;
+  color: var(--mute);
+  margin-top: 4px;
+}
+
+.relay-stat-detail {
+  font-size: 11px;
+  margin-top: 5px;
+  font-weight: 500;
+}
+
+/* ── Section headers ───────────────────────────────────────────── */
+.relay-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.relay-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.relay-section-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--amber);
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity .2s;
+}
+
+.relay-section-link:hover {
+  opacity: 0.8;
+}
+
+/* ── Status pills ──────────────────────────────────────────────── */
+.relay-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.relay-status-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11.5px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.relay-status-pill.confirmed,
+.relay-status-pill.registered {
+  background: #E6F7F2;
+  color: #1A8A6A;
+}
+
+.relay-status-pill.waitlisted,
+.relay-status-pill.pending {
+  background: #FFF4E6;
+  color: #C77E1F;
+}
+
+.relay-status-pill.open {
+  background: #E6F7F2;
+  color: #1A8A6A;
+  border: 1px solid #B8E8DA;
+}
+
+.relay-status-pill.cancelled,
+.relay-status-pill.rejected {
+  background: #FDE8E7;
+  color: #C44035;
+}
+
+.relay-status-pill.registration-open {
+  background: var(--blue-light);
+  color: var(--blue);
+}
+
+.relay-status-pill.ends-soon {
+  background: var(--amber-light);
+  color: var(--amber);
+  border: 1px solid #F5D9A8;
+}
+
+/* ── Event list items (dashboard) ──────────────────────────────── */
+.relay-event-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-light);
+  transition: background .15s;
+  cursor: pointer;
+}
+
+.relay-event-row:last-child {
+  border-bottom: none;
+}
+
+.relay-event-row:hover {
+  background: var(--surface-hover);
+  margin: 0 -20px;
+  padding-left: 20px;
+  padding-right: 20px;
+  border-radius: 8px;
+}
+
+.relay-event-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.relay-event-icon.workshop {
+  background: #EBF0FE;
+}
+
+.relay-event-icon.seminar {
+  background: #F0ECFE;
+}
+
+.relay-event-icon.cultural {
+  background: #FDE8E7;
+}
+
+.relay-event-icon.sports {
+  background: #E6F7F2;
+}
+
+.relay-event-icon.other {
+  background: #F0EDE8;
+}
+
+.relay-event-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.relay-event-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+
+.relay-event-details {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--mute);
+}
+
+.relay-event-details span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.relay-event-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Registrations table (dashboard) ───────────────────────────── */
+.relay-reg-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+
+.relay-reg-table th {
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--mute);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.relay-reg-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text);
+  vertical-align: middle;
+}
+
+.relay-reg-table tr:last-child td {
+  border-bottom: none;
+}
+
+.relay-reg-table tr:hover td {
+  background: var(--surface-hover);
+}
+
+.relay-reg-event-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.relay-reg-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+/* ── Notification items (dashboard sidebar) ────────────────────── */
+.relay-notif-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-light);
+  align-items: flex-start;
+}
+
+.relay-notif-item:last-child {
+  border-bottom: none;
+}
+
+.relay-notif-icon-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.relay-notif-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.relay-notif-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.relay-notif-message {
+  font-size: 12px;
+  color: var(--mute);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+.relay-notif-time {
+  font-size: 11px;
+  color: var(--mute);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── CTA card ──────────────────────────────────────────────────── */
+.relay-cta-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.relay-cta-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  background: var(--blue-light);
+  color: var(--blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.relay-cta-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.relay-cta-desc {
+  font-size: 12.5px;
+  color: var(--mute);
+  line-height: 1.5;
+  margin-bottom: 14px;
 }
 
 /* ── Form controls ─────────────────────────────────────────────── */
 .relay-field-label {
-  font-size: 10.5px;
-  color: var(--mute);
+  font-size: 12px;
+  color: var(--text-secondary);
   margin-bottom: 5px;
   display: block;
+  font-weight: 500;
 }
 
 .relay-input {
   width: 100%;
-  background: var(--ink);
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 8px 10px;
-  color: var(--paper);
-  font-size: 13px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 9px 12px;
+  color: var(--text);
+  font-size: 13.5px;
   font-family: inherit;
+  transition: border-color .2s, box-shadow .2s;
 }
 
 .relay-input:focus {
   outline: none;
   border-color: var(--amber);
+  box-shadow: 0 0 0 3px rgba(232, 148, 58, 0.1);
 }
 
 .relay-btn {
   background: var(--amber);
-  color: #1A1206;
+  color: #FFFFFF;
   border: none;
-  border-radius: 7px;
-  padding: 9px 14px;
-  font-size: 12.5px;
+  border-radius: 9px;
+  padding: 9px 18px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  transition: opacity .15s;
+  transition: opacity .2s, box-shadow .2s, transform .1s;
+  font-family: inherit;
+  text-decoration: none;
+}
+
+.relay-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  box-shadow: 0 2px 8px rgba(232, 148, 58, 0.3);
+}
+
+.relay-btn:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .relay-btn:disabled {
@@ -305,14 +904,64 @@ body {
   cursor: not-allowed;
 }
 
-.relay-btn-ghost {
+.relay-btn-ghost,
+.relay-btn-secondary {
   background: transparent;
-  color: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 8px 12px;
-  font-size: 12.5px;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
+  font-family: inherit;
+  transition: background .2s, border-color .2s;
+}
+
+.relay-btn-ghost:hover,
+.relay-btn-secondary:hover {
+  background: var(--bg);
+  border-color: var(--text-secondary);
+}
+
+.relay-btn-danger {
+  background: transparent;
+  color: var(--coral);
+  border: 1px solid var(--coral);
+  border-radius: 9px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .2s;
+}
+
+.relay-btn-danger:hover {
+  background: var(--coral-light);
+}
+
+.relay-btn-sm {
+  padding: 5px 12px;
+  font-size: 12px;
+  border-radius: 7px;
+}
+
+.relay-btn-view {
+  background: var(--blue-light);
+  color: var(--blue);
+  border: none;
+  border-radius: 7px;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity .2s;
+}
+
+.relay-btn-view:hover {
+  opacity: 0.85;
 }
 
 /* ── Live feed ─────────────────────────────────────────────────── */
@@ -320,9 +969,10 @@ body {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
-  margin-bottom: 10px;
+  color: var(--text);
+  margin-bottom: 12px;
 }
 
 .relay-feed-list {
@@ -349,7 +999,7 @@ body {
 }
 
 .relay-feed-text {
-  color: var(--paper);
+  color: var(--text);
   line-height: 1.4;
 }
 
@@ -369,7 +1019,7 @@ body {
 
 .relay-trace-label {
   width: 150px;
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--mute);
   flex-shrink: 0;
 }
@@ -377,7 +1027,7 @@ body {
 .relay-trace-track {
   flex: 1;
   height: 6px;
-  background: var(--ink);
+  background: var(--bg);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -391,28 +1041,18 @@ body {
 .relay-trace-ms {
   width: 40px;
   text-align: right;
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--mute);
   flex-shrink: 0;
 }
 
-/* ── Pill & notification row ───────────────────────────────────── */
-.relay-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10.5px;
-  padding: 2px 7px;
-  border-radius: 20px;
-  font-weight: 500;
-}
-
+/* ── Pill & notification row (legacy) ──────────────────────────── */
 .relay-notif-row {
   display: flex;
   align-items: flex-start;
   gap: 10px;
   padding: 10px 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .relay-notif-row:last-child {
@@ -423,38 +1063,11 @@ body {
   width: 28px;
   height: 28px;
   border-radius: 7px;
-  background: var(--panel-2);
+  background: var(--bg);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-}
-
-/* ── Super admin stats ─────────────────────────────────────────── */
-.relay-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 18px;
-}
-
-.relay-stat-card {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 14px 16px;
-}
-
-.relay-stat-num {
-  font-size: 24px;
-  font-weight: 700;
-  font-family: 'Space Grotesk', sans-serif;
-}
-
-.relay-stat-label {
-  font-size: 11px;
-  color: var(--mute);
-  margin-top: 3px;
 }
 
 /* ── Channel bar chart ─────────────────────────────────────────── */
@@ -477,7 +1090,7 @@ body {
 .relay-bar-track {
   flex: 1;
   height: 10px;
-  background: var(--ink);
+  background: var(--bg);
   border-radius: 5px;
   overflow: hidden;
 }
@@ -492,22 +1105,227 @@ body {
   text-align: right;
   font-size: 12px;
   font-family: 'IBM Plex Mono', monospace;
+  color: var(--text-secondary);
+}
+
+/* ── Welcome banner ────────────────────────────────────────────── */
+.relay-welcome {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 4px 0 20px;
+}
+
+.relay-welcome h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 4px;
+  letter-spacing: -0.02em;
+}
+
+.relay-welcome p {
+  font-size: 13.5px;
+  color: var(--mute);
+  margin: 0;
+}
+
+.relay-welcome-right {
+  text-align: right;
+  font-size: 13px;
+  color: var(--mute);
+}
+
+.relay-welcome-right .date {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* ── Auth pages ────────────────────────────────────────────────── */
+.relay-auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sidebar-bg);
+  background-image: radial-gradient(circle at top right, rgba(232, 148, 58, 0.15), transparent 40%),
+    radial-gradient(circle at bottom left, rgba(74, 123, 247, 0.1), transparent 40%);
+}
+
+.relay-auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 40px;
+  width: 420px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.relay-auth-input {
+  width: 100%;
+  background: #FFFFFF;
+  border: 2px solid #E2DFD9;
+  border-radius: 9px;
+  padding: 11px 14px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.relay-auth-input:focus {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px rgba(232, 148, 58, 0.15);
+}
+
+.relay-auth-btn {
+  background: var(--text);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 9px;
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  transition: opacity .2s, transform .1s, box-shadow .2s;
+  font-family: inherit;
+  margin-top: 8px;
+}
+
+.relay-auth-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  box-shadow: 0 4px 12px rgba(45, 49, 66, 0.25);
+}
+
+.relay-auth-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.relay-auth-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.relay-auth-card h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+}
+
+.relay-auth-error {
+  background: var(--coral-light);
+  border: 1px solid rgba(229, 90, 79, 0.2);
+  color: var(--coral);
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  font-size: 13px;
 }
 
 /* ── Scrollbar ─────────────────────────────────────────────────── */
 .relay-scroll::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
 .relay-scroll::-webkit-scrollbar-thumb {
-  background: var(--line);
+  background: var(--border);
   border-radius: 3px;
+}
+
+.relay-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--mute);
 }
 
 /* ── Utility ───────────────────────────────────────────────────── */
 .relay-empty {
   color: var(--mute);
-  font-size: 12.5px;
-  padding: 20px 0;
+  font-size: 13px;
+  padding: 24px 0;
   text-align: center;
+}
+
+/* ── Chevron icon for "View All" links ─────────────────────────── */
+.relay-chevron {
+  display: inline-block;
+  transition: transform .2s;
+}
+
+.relay-section-link:hover .relay-chevron {
+  transform: translateX(2px);
+}
+
+/* ── Dashboard grid layout ─────────────────────────────────────── */
+.relay-dashboard {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+
+.relay-dashboard-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.relay-dashboard-side {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Timeline (participant view) ───────────────────────────────── */
+.relay-timeline-line {
+  position: absolute;
+  left: 15px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  background: var(--border);
+}
+
+.relay-timeline-dot {
+  position: absolute;
+  left: -4px;
+  top: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+}
+
+.relay-timeline-dot.past {
+  background: var(--teal);
+}
+
+.relay-timeline-dot.future {
+  background: var(--border);
+}
+
+/* ── Animations ────────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.relay-card,
+.relay-stat-card,
+.relay-event-row {
+  animation: fadeIn 0.3s ease-out;
 }

@@ -2,10 +2,10 @@ import React from "react";
 import { CheckCircle2, RefreshCw, XCircle, Clock } from "lucide-react";
 
 const STATUS_MAP = {
-  Sent:     { color: "var(--teal)",  bg: "rgba(79,184,166,0.15)",  icon: CheckCircle2 },
-  Retrying: { color: "var(--amber)", bg: "rgba(242,169,60,0.15)",  icon: RefreshCw },
-  Failed:   { color: "var(--coral)", bg: "rgba(226,96,79,0.15)",   icon: XCircle },
-  Queued:   { color: "var(--mute)",  bg: "rgba(138,147,172,0.15)", icon: Clock },
+  Sent:     { color: "#1A8A6A",  bg: "#E6F7F2",  icon: CheckCircle2 },
+  Retrying: { color: "#C77E1F", bg: "#FFF4E6",  icon: RefreshCw },
+  Failed:   { color: "#C44035", bg: "#FDE8E7",   icon: XCircle },
+  Queued:   { color: "#8B90A5",  bg: "#F0EDE8", icon: Clock },
 };
 
 /**

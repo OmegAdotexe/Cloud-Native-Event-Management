@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext.jsx";
+import { Radio } from "lucide-react";
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -33,55 +34,70 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="relay-root relay-scroll" style={{ height: "720px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div className="relay-card" style={{ width: "360px", padding: "24px" }}>
-        <h1 style={{ fontSize: "20px", marginBottom: "8px", marginTop: 0 }}>Create an account</h1>
-        <p className="relay-meta-item" style={{ marginBottom: "24px" }}>Join Relay</p>
+    <div className="relay-auth-page">
+      <div className="relay-auth-card">
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "24px" }}>
+          <div style={{
+            width: "34px", height: "34px", borderRadius: "9px",
+            background: "linear-gradient(135deg, #E8943A, #D47A20)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 2px 8px rgba(232, 148, 58, 0.3)"
+          }}>
+            <Radio size={16} color="#fff" />
+          </div>
+          <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: "18px", color: "var(--text)" }}>Relay</span>
+        </div>
+
+        <h1>Create an account</h1>
+        <p style={{ color: "var(--mute)", fontSize: "13.5px", marginBottom: "28px" }}>Join Relay to discover campus events</p>
 
         {(error || localError) && (
-          <div style={{ background: "rgba(226, 96, 79, 0.15)", border: "1px solid var(--coral)", color: "var(--coral)", padding: "10px", borderRadius: "8px", marginBottom: "16px", fontSize: "13px" }}>
+          <div className="relay-auth-error">
             {localError || error}
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: "16px" }}>
+          <div style={{ marginBottom: "18px" }}>
             <label className="relay-field-label">Full Name</label>
             <input
               type="text"
-              className="relay-input"
+              className="relay-auth-input"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              placeholder="Your full name"
               required
             />
           </div>
-          <div style={{ marginBottom: "16px" }}>
+          <div style={{ marginBottom: "18px" }}>
             <label className="relay-field-label">Email</label>
             <input
               type="email"
-              className="relay-input"
+              className="relay-auth-input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@campus.edu"
               required
             />
           </div>
-          <div style={{ marginBottom: "24px" }}>
+          <div style={{ marginBottom: "28px" }}>
             <label className="relay-field-label">Password</label>
             <input
               type="password"
-              className="relay-input"
+              className="relay-auth-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="Minimum 6 characters"
               required
             />
           </div>
-          <button type="submit" className="relay-btn" style={{ width: "100%", justifyContent: "center" }} disabled={loading}>
-            {loading ? "Registering..." : "Sign Up"}
+          <button type="submit" className="relay-btn" style={{ width: "100%", justifyContent: "center", padding: "12px", background: "#4A7BF7", color: "#FFFFFF", borderRadius: "9px", border: "none", fontWeight: 600 }} disabled={loading}>
+            {loading ? "Creating account..." : "Sign Up"}
           </button>
         </form>
 
-        <p style={{ marginTop: "16px", fontSize: "12px", textAlign: "center", color: "var(--mute)" }}>
-          Already have an account? <Link to="/login" style={{ color: "var(--amber)", textDecoration: "none" }}>Log in</Link>
+        <p style={{ marginTop: "20px", fontSize: "13px", textAlign: "center", color: "var(--mute)" }}>
+          Already have an account? <Link to="/login" style={{ color: "var(--amber)", textDecoration: "none", fontWeight: 600 }}>Log in</Link>
         </p>
       </div>
     </div>

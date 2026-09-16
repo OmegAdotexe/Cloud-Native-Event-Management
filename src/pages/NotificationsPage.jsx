@@ -5,18 +5,20 @@ import { useAuth } from "../contexts/AuthContext.jsx";
 import { useNavigate } from "react-router-dom";
 
 const ICONS = {
-  REGISTRATION_CONFIRMED: <CheckCheck size={16} color="#10b981" />,
-  REGISTRATION_WAITLISTED: <CalendarClock size={16} color="#f59e0b" />,
-  REGISTRATION_REJECTED: <XCircle size={16} color="#ef4444" />,
-  REGISTRATION_CANCELLED: <XCircle size={16} color="#ef4444" />,
-  REGISTRATION_PENDING: <Info size={16} color="#f59e0b" />,
-  EVENT_PUBLISHED: <BellRing size={16} color="#6366f1" />,
-  EVENT_CANCELLED: <XCircle size={16} color="#ef4444" />,
-  EVENT_VENUE_CHANGED: <Info size={16} color="#3b82f6" />,
-  EVENT_TIME_CHANGED: <Info size={16} color="#3b82f6" />,
-  EVENT_UPDATED: <Info size={16} color="#3b82f6" />,
-  TIMELINE_UPDATED: <CalendarClock size={16} color="#3b82f6" />
+  REGISTRATION_CONFIRMED: { icon: <CheckCheck size={16} />, bg: "#E6F7F2", color: "#2AAB8A" },
+  REGISTRATION_WAITLISTED: { icon: <CalendarClock size={16} />, bg: "#FFF4E6", color: "#E8943A" },
+  REGISTRATION_REJECTED: { icon: <XCircle size={16} />, bg: "#FDE8E7", color: "#E55A4F" },
+  REGISTRATION_CANCELLED: { icon: <XCircle size={16} />, bg: "#FDE8E7", color: "#E55A4F" },
+  REGISTRATION_PENDING: { icon: <Info size={16} />, bg: "#FFF4E6", color: "#E8943A" },
+  EVENT_PUBLISHED: { icon: <BellRing size={16} />, bg: "#F0ECFE", color: "#7C5CFC" },
+  EVENT_CANCELLED: { icon: <XCircle size={16} />, bg: "#FDE8E7", color: "#E55A4F" },
+  EVENT_VENUE_CHANGED: { icon: <Info size={16} />, bg: "#EBF0FE", color: "#4A7BF7" },
+  EVENT_TIME_CHANGED: { icon: <Info size={16} />, bg: "#EBF0FE", color: "#4A7BF7" },
+  EVENT_UPDATED: { icon: <Info size={16} />, bg: "#EBF0FE", color: "#4A7BF7" },
+  TIMELINE_UPDATED: { icon: <CalendarClock size={16} />, bg: "#EBF0FE", color: "#4A7BF7" },
 };
+
+const DEFAULT_ICON = { icon: <BellRing size={16} />, bg: "#F0EDE8", color: "#8B90A5" };
 
 export default function NotificationsPage() {
   const { user } = useAuth();
@@ -67,75 +69,81 @@ export default function NotificationsPage() {
           <p>Updates on your events and registrations.</p>
         </div>
         {notifications.some(n => !n.isRead) && (
-          <button className="relay-btn" style={{ background: "var(--mute)" }} onClick={handleMarkAllAsRead}>
+          <button className="relay-btn-ghost" onClick={handleMarkAllAsRead}>
             Mark all as read
           </button>
         )}
       </div>
 
       <div className="relay-body">
-        <div className="relay-grid" style={{ gridTemplateColumns: "1fr", maxWidth: "800px" }}>
+        <div style={{ maxWidth: "840px" }}>
           
           {isLoading && <div className="relay-empty">Loading notifications...</div>}
-          {error && <div className="relay-empty" style={{ color: "#ef4444" }}>{error}</div>}
+          {error && <div className="relay-empty" style={{ color: "var(--coral)" }}>{error}</div>}
           {!isLoading && !error && notifications.length === 0 && <div className="relay-empty">You're all caught up! No notifications.</div>}
 
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {notifications.map((notif) => (
-              <div 
-                key={notif.id} 
-                className="relay-card" 
-                style={{ 
-                  opacity: notif.isRead ? 0.6 : 1, 
-                  display: "flex", 
-                  gap: "16px",
-                  alignItems: "flex-start",
-                  padding: "16px",
-                  cursor: "pointer"
-                }}
-                onClick={() => {
-                  if (notif.type.startsWith("REGISTRATION_")) {
-                    navigate("/my-registrations");
-                  } else {
-                    navigate("/participant");
-                  }
-                }}
-              >
-                <div style={{ marginTop: "2px" }}>
-                  {ICONS[notif.type] || <BellRing size={16} />}
-                </div>
-                
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div style={{ fontWeight: 600, color: "var(--text)" }}>{notif.title}</div>
-                    <div style={{ fontSize: "11px", color: "var(--mute)" }}>
-                      {new Date(notif.createdAt).toLocaleString()}
-                    </div>
+            {notifications.map((notif) => {
+              const iconConfig = ICONS[notif.type] || DEFAULT_ICON;
+              return (
+                <div 
+                  key={notif.id} 
+                  className="relay-card" 
+                  style={{ 
+                    opacity: notif.isRead ? 0.65 : 1, 
+                    display: "flex", 
+                    gap: "14px",
+                    alignItems: "flex-start",
+                    cursor: "pointer",
+                    transition: "opacity 0.2s",
+                  }}
+                  onClick={() => {
+                    if (notif.type.startsWith("REGISTRATION_")) {
+                      navigate("/my-registrations");
+                    } else {
+                      navigate("/");
+                    }
+                  }}
+                >
+                  <div style={{ 
+                    width: "34px", height: "34px", borderRadius: "50%", flexShrink: 0,
+                    background: iconConfig.bg, color: iconConfig.color,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    marginTop: "2px",
+                  }}>
+                    {iconConfig.icon}
                   </div>
                   
-                  <div style={{ fontSize: "13px", color: "var(--text)", marginTop: "4px", lineHeight: "1.5" }}>
-                    {notif.message}
-                  </div>
-                  
-                  {!notif.isRead && (
-                    <div style={{ marginTop: "12px", display: "flex", gap: "8px" }}>
-                      <button 
-                        className="relay-btn" 
-                        style={{ padding: "4px 10px", fontSize: "11px", background: "transparent", color: "var(--text)", border: "1px solid var(--border)" }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMarkAsRead(notif.id);
-                        }}
-                      >
-                        Mark as read
-                      </button>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div style={{ fontWeight: 600, color: "var(--text)", fontSize: "13.5px" }}>{notif.title}</div>
+                      <div style={{ fontSize: "11.5px", color: "var(--mute)", whiteSpace: "nowrap", marginLeft: "12px" }}>
+                        {new Date(notif.createdAt).toLocaleString()}
+                      </div>
                     </div>
-                  )}
+                    
+                    <div style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "4px", lineHeight: "1.5" }}>
+                      {notif.message}
+                    </div>
+                    
+                    {!notif.isRead && (
+                      <div style={{ marginTop: "10px" }}>
+                        <button 
+                          className="relay-btn-ghost relay-btn-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMarkAsRead(notif.id);
+                          }}
+                        >
+                          Mark as read
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-
         </div>
       </div>
     </>

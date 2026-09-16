@@ -79,12 +79,21 @@ export default function AdminRegistrations({ event }) {
     }
   };
 
+  function getStatusColor(status) {
+    switch (status) {
+      case 'CONFIRMED': return "#1A8A6A";
+      case 'WAITLISTED': return "#C77E1F";
+      case 'PENDING': return "#7C5CFC";
+      default: return "#C44035";
+    }
+  }
+
   return (
     <div style={{ marginTop: "24px" }}>
       <div className="relay-feed-title">Registrations Management</div>
       
       {event.registrationMode === 'INVITE_ONLY' && (
-        <form onSubmit={handleInvite} style={{ marginBottom: "16px", padding: "12px", background: "var(--surface)", borderRadius: "8px" }}>
+        <form onSubmit={handleInvite} style={{ marginBottom: "16px", padding: "14px", background: "var(--bg)", borderRadius: "10px", border: "1px solid var(--border)" }}>
           <label className="relay-field-label">Invite Participants (Comma-separated IDs)</label>
           <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
             <input 
@@ -99,7 +108,7 @@ export default function AdminRegistrations({ event }) {
         </form>
       )}
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
         <select 
           className="relay-input" 
           style={{ width: "200px" }}
@@ -114,54 +123,53 @@ export default function AdminRegistrations({ event }) {
           <option value="CANCELLED">CANCELLED</option>
         </select>
         
-        <div style={{ display: "flex", gap: "8px", alignItems: "center", fontSize: "12px" }}>
-          <button className="relay-btn" disabled={page === 0 || loading} onClick={() => setPage(p => p - 1)}>Prev</button>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", fontSize: "12px", color: "var(--text-secondary)" }}>
+          <button className="relay-btn-ghost relay-btn-sm" disabled={page === 0 || loading} onClick={() => setPage(p => p - 1)}>Prev</button>
           <span>Page {page + 1} of {Math.max(1, totalPages)}</span>
-          <button className="relay-btn" disabled={page >= totalPages - 1 || loading} onClick={() => setPage(p => p + 1)}>Next</button>
+          <button className="relay-btn-ghost relay-btn-sm" disabled={page >= totalPages - 1 || loading} onClick={() => setPage(p => p + 1)}>Next</button>
         </div>
       </div>
 
       {loading ? (
         <div className="relay-empty">Loading registrations...</div>
       ) : error ? (
-        <div className="relay-empty" style={{ color: "#ef4444" }}>{error}</div>
+        <div className="relay-empty" style={{ color: "var(--coral)" }}>{error}</div>
       ) : registrations.length === 0 ? (
         <div className="relay-empty">No registrations found.</div>
       ) : (
-        <div style={{ border: "1px solid var(--border)", borderRadius: "8px", overflow: "hidden" }}>
+        <div style={{ border: "1px solid var(--border)", borderRadius: "12px", overflow: "hidden", background: "var(--surface)" }}>
           {registrations.map((reg, index) => (
             <div key={reg.id} style={{ 
-              padding: "12px", 
-              borderTop: index > 0 ? "1px solid var(--border)" : "none",
+              padding: "14px 16px", 
+              borderTop: index > 0 ? "1px solid var(--border-light)" : "none",
               display: "flex",
               justifyContent: "space-between",
-              alignItems: "center"
+              alignItems: "center",
+              transition: "background 0.15s",
             }}>
               <div>
-                <div style={{ fontWeight: 600, fontSize: "14px" }}>{reg.participantName} <span style={{ color: "var(--mute)", fontWeight: 400 }}>#{reg.participantId}</span></div>
+                <div style={{ fontWeight: 600, fontSize: "14px", color: "var(--text)" }}>{reg.participantName} <span style={{ color: "var(--mute)", fontWeight: 400, fontSize: "12px" }}>#{reg.participantId}</span></div>
                 <div style={{ fontSize: "12px", color: "var(--mute)", marginTop: "4px" }}>
                   Status: <span style={{ 
                     fontWeight: 600,
-                    color: reg.status === 'CONFIRMED' ? "#10b981" : reg.status === 'WAITLISTED' ? "#f59e0b" : reg.status === 'PENDING' ? "#6366f1" : "#ef4444"
+                    color: getStatusColor(reg.status),
                   }}>{reg.status}</span>
-                  <br />
-                  Registered: {new Date(reg.registeredAt).toLocaleString()}
+                  <span style={{ marginLeft: "12px" }}>Registered: {new Date(reg.registeredAt).toLocaleString()}</span>
                 </div>
               </div>
               
               {event.registrationMode === 'APPROVAL_REQUIRED' && reg.status === 'PENDING' && (
                 <div style={{ display: "flex", gap: "8px" }}>
                   <button 
-                    className="relay-btn" 
+                    className="relay-btn relay-btn-sm" 
                     disabled={actionLoading}
                     onClick={() => handleApprove(reg.id)}
-                    style={{ padding: "4px 8px", fontSize: "12px", backgroundColor: "#10b981" }}
+                    style={{ background: "var(--teal)" }}
                   >Approve</button>
                   <button 
-                    className="relay-btn" 
+                    className="relay-btn-danger relay-btn-sm" 
                     disabled={actionLoading}
                     onClick={() => handleReject(reg.id)}
-                    style={{ padding: "4px 8px", fontSize: "12px", backgroundColor: "#ef4444" }}
                   >Reject</button>
                 </div>
               )}
@@ -169,10 +177,10 @@ export default function AdminRegistrations({ event }) {
               {(reg.status === 'CONFIRMED' || reg.status === 'WAITLISTED') && (
                 <div style={{ display: "flex", gap: "8px" }}>
                   <button 
-                    className="relay-btn" 
+                    className="relay-btn relay-btn-sm" 
                     disabled={actionLoading}
                     onClick={() => handleCancel(reg.id)}
-                    style={{ padding: "4px 8px", fontSize: "12px", backgroundColor: "#f59e0b" }}
+                    style={{ background: "var(--amber)" }}
                   >Cancel</button>
                 </div>
               )}

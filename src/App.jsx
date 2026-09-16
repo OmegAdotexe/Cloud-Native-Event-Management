@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext.jsx";
 import * as relayApi from "./api/relayApi.js";
+import { Search, Bell, ChevronDown } from "lucide-react";
 import Sidebar from "./components/Sidebar.jsx";
 import AdminPage from "./pages/AdminPage.jsx";
 import ParticipantPage from "./pages/ParticipantPage.jsx";
@@ -9,11 +10,61 @@ import LoginPage from "./pages/LoginPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
 import MyRegistrationsPage from "./pages/MyRegistrationsPage.jsx";
 import NotificationsPage from "./pages/NotificationsPage.jsx";
+import SuperAdminPage from "./pages/SuperAdminPage.jsx";
+import ParticipantEventsPage from "./pages/ParticipantEventsPage.jsx";
 
 function ProtectedRoute({ children }) {
   const { token, isLoading } = useAuth();
-  if (isLoading) return <div className="relay-root" style={{ height: "720px", display: "grid", placeItems: "center" }}>Restoring session...</div>;
+  if (isLoading) return <div className="relay-root" style={{ display: "grid", placeItems: "center", minHeight: "100vh" }}>Restoring session...</div>;
   return token ? children : <Navigate to="/login" replace />;
+}
+
+function TopHeader() {
+  const { user, role } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (user) {
+      relayApi.getUnreadNotificationCount()
+        .then(res => setUnreadCount(res.count))
+        .catch(() => {});
+    }
+  }, [user, location.pathname]);
+
+  const initials = user?.name
+    ? user.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
+    : "U";
+
+  const ROLE_LABELS = {
+    SUPER_ADMIN: "Super Admin",
+    EVENT_ADMIN: "Event Admin",
+    PARTICIPANT: "Participant",
+  };
+
+  return (
+    <div className="relay-header">
+      <div className="relay-search">
+        <Search size={16} />
+        <input type="text" placeholder="Search events, people, or anything..." />
+      </div>
+      <div className="relay-header-actions">
+        <div className="relay-header-bell" onClick={() => navigate("/notifications")}>
+          <Bell size={19} />
+          {unreadCount > 0 && <div className="relay-header-badge" />}
+        </div>
+        <div className="relay-header-user">
+          <div className="relay-header-avatar">{initials}</div>
+          <div>
+            <div className="relay-header-name">{user?.name || "User"}</div>
+            <div className="relay-header-role">{ROLE_LABELS[role] || "Participant"}</div>
+          </div>
+          <ChevronDown size={14} style={{ color: "var(--mute)" }} />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function MainApp() {
@@ -37,14 +88,18 @@ function MainApp() {
   useEffect(() => { loadEvents(); }, [loadEvents]);
 
   const shared = { events, isLoading, error, onRefresh: loadEvents };
-  return <div className="relay-root relay-scroll" style={{ height: "720px" }}>
+  return <div className="relay-root">
     <Sidebar />
     <div className="relay-main">
+      <TopHeader />
       <Routes>
         <Route path="/" element={<>
-          {role === "EVENT_ADMIN" && <AdminPage {...shared} />}
+          {(role === "EVENT_ADMIN" || role === "SUPER_ADMIN") && <SuperAdminPage {...shared} />}
           {role === "PARTICIPANT" && <ParticipantPage {...shared} />}
-          {role === "SUPER_ADMIN" && <AdminPage {...shared} />}
+        </>} />
+        <Route path="/events" element={<>
+          {(role === "EVENT_ADMIN" || role === "SUPER_ADMIN") && <AdminPage {...shared} />}
+          {role === "PARTICIPANT" && <ParticipantEventsPage {...shared} />}
         </>} />
         {role === "PARTICIPANT" && <Route path="/my-registrations" element={<MyRegistrationsPage />} />}
         <Route path="/notifications" element={<NotificationsPage />} />

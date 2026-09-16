@@ -1,0 +1,55 @@
+package com.campusconnect.notification.model;
+
+import com.campusconnect.user.model.User;
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "notifications")
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Notification {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true)
+    private String messageId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recipient_id", nullable = false)
+    private User recipient;
+
+    @Column(name = "event_id")
+    private Long eventId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private NotificationType type;
+
+    @Column(nullable = false)
+    private String title;
+
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String message;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private NotificationChannel channel;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private NotificationStatus status;
+
+    @CreationTimestamp
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+
+    private LocalDateTime readAt;
+}

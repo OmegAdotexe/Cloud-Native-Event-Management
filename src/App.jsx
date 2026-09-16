@@ -8,6 +8,7 @@ import ParticipantPage from "./pages/ParticipantPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
 import MyRegistrationsPage from "./pages/MyRegistrationsPage.jsx";
+import NotificationsPage from "./pages/NotificationsPage.jsx";
 
 function ProtectedRoute({ children }) {
   const { token, isLoading } = useAuth();
@@ -46,6 +47,7 @@ function MainApp() {
           {role === "SUPER_ADMIN" && <AdminPage {...shared} />}
         </>} />
         {role === "PARTICIPANT" && <Route path="/my-registrations" element={<MyRegistrationsPage />} />}
+        <Route path="/notifications" element={<NotificationsPage />} />
       </Routes>
     </div>
   </div>;

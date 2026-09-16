@@ -18,6 +18,8 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     List<Event> findByCategoryOrderByStartTimeAsc(EventCategory category);
     List<Event> findByStatusAndCategoryOrderByStartTimeAsc(EventStatus status, EventCategory category);
     List<Event> findByCreatedBy(User user);
+    List<Event> findByCreatedByOrderByStartTimeAsc(User user);
+    List<Event> findByCreatedByAndCategoryOrderByStartTimeAsc(User user, EventCategory category);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT e FROM Event e WHERE e.id = :id")

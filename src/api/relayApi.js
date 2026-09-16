@@ -90,8 +90,20 @@ export async function reassignEvent(id, newEventAdminId) {
 // Notifications
 // ---------------------------------------------------------------------------
 
-export async function getNotifications(eventId) {
-  return [];
+export async function getNotifications(page = 0, size = 20) {
+  return authFetch(`/api/v1/notifications?page=${page}&size=${size}`);
+}
+
+export async function getUnreadNotificationCount() {
+  return authFetch("/api/v1/notifications/unread-count");
+}
+
+export async function markNotificationRead(id) {
+  return authFetch(`/api/v1/notifications/${id}/read`, { method: "POST" });
+}
+
+export async function markAllNotificationsRead() {
+  return authFetch("/api/v1/notifications/read-all", { method: "POST" });
 }
 
 // ---------------------------------------------------------------------------

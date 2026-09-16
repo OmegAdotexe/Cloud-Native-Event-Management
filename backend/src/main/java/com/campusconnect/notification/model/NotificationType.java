@@ -1,0 +1,13 @@
+package com.campusconnect.notification.model;
+
+public enum NotificationType {
+    REGISTRATION_CONFIRMED,
+    REGISTRATION_WAITLISTED,
+    REGISTRATION_REJECTED,
+    REGISTRATION_CANCELLED,
+    EVENT_PUBLISHED,
+    EVENT_CANCELLED,
+    EVENT_VENUE_CHANGED,
+    EVENT_TIME_CHANGED,
+    EVENT_UPDATED
+}

@@ -85,6 +85,12 @@ public class RegistrationService {
                     event.getId(),
                     participant.getId()
             ));
+        } else if (savedRegistration.getStatus() == RegistrationStatus.WAITLISTED) {
+            eventPublisher.publishEvent(new RegistrationWaitlistedEvent(
+                    savedRegistration.getId(),
+                    event.getId(),
+                    participant.getId()
+            ));
         }
 
         return toResponse(savedRegistration);
@@ -112,6 +118,12 @@ public class RegistrationService {
         registration.setStatus(RegistrationStatus.CANCELLED);
         registration.setCancelledAt(LocalDateTime.now());
         registrationRepository.save(registration);
+        
+        eventPublisher.publishEvent(new RegistrationCancelledEvent(
+                registration.getId(),
+                event.getId(),
+                registration.getParticipant().getId()
+        ));
 
         if (oldStatus == RegistrationStatus.CONFIRMED && event.getWaitlistEnabled()) {
             promoteWaitlistedParticipant(event);
@@ -163,6 +175,11 @@ public class RegistrationService {
             ));
         } else if (event.getWaitlistEnabled()) {
             registration.setStatus(RegistrationStatus.WAITLISTED);
+            eventPublisher.publishEvent(new RegistrationWaitlistedEvent(
+                    registration.getId(),
+                    event.getId(),
+                    registration.getParticipant().getId()
+            ));
         } else {
             throw new IllegalStateException("Event capacity is full and waitlist is not enabled");
         }
@@ -193,6 +210,12 @@ public class RegistrationService {
         registration.setStatus(RegistrationStatus.REJECTED);
         registration.setRespondedAt(LocalDateTime.now());
         registration.setRespondedByAdminId(requester.getId());
+        
+        eventPublisher.publishEvent(new RegistrationRejectedEvent(
+                registration.getId(),
+                event.getId(),
+                registration.getParticipant().getId()
+        ));
 
         // We don't save the reason anywhere per the instructions, but we accept it as input.
         return toResponse(registrationRepository.save(registration));

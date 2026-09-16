@@ -25,6 +25,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
+import org.springframework.context.ApplicationEventPublisher;
+import com.campusconnect.event.model.*;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -32,6 +35,7 @@ public class EventService {
     private final EventRepository eventRepository;
     private final EventChangeLogRepository eventChangeLogRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public EventResponse createEvent(CreateEventRequest request, User creator) {
@@ -64,13 +68,21 @@ public class EventService {
     public List<EventResponse> getAllEvents(User requester, EventCategory category) {
         List<Event> events;
         if (category != null) {
-            events = requester.getRole() == Role.PARTICIPANT
-                    ? eventRepository.findByStatusAndCategoryOrderByStartTimeAsc(EventStatus.PUBLISHED, category)
-                    : eventRepository.findByCategoryOrderByStartTimeAsc(category);
+            if (requester.getRole() == Role.PARTICIPANT) {
+                events = eventRepository.findByStatusAndCategoryOrderByStartTimeAsc(EventStatus.PUBLISHED, category);
+            } else if (requester.getRole() == Role.EVENT_ADMIN) {
+                events = eventRepository.findByCreatedByAndCategoryOrderByStartTimeAsc(requester, category);
+            } else {
+                events = eventRepository.findByCategoryOrderByStartTimeAsc(category);
+            }
         } else {
-            events = requester.getRole() == Role.PARTICIPANT
-                    ? eventRepository.findByStatusOrderByStartTimeAsc(EventStatus.PUBLISHED)
-                    : eventRepository.findAllByOrderByStartTimeAsc();
+            if (requester.getRole() == Role.PARTICIPANT) {
+                events = eventRepository.findByStatusOrderByStartTimeAsc(EventStatus.PUBLISHED);
+            } else if (requester.getRole() == Role.EVENT_ADMIN) {
+                events = eventRepository.findByCreatedByOrderByStartTimeAsc(requester);
+            } else {
+                events = eventRepository.findAllByOrderByStartTimeAsc();
+            }
         }
         return events.stream().map(this::toResponse).toList();
     }
@@ -112,10 +124,28 @@ public class EventService {
         validateVirtualLink(event.getIsVirtual(), event.getVirtualLink());
 
         // Log changes for tracked fields
-        logChange(event, requester, "venue", oldVenue, event.getVenueName());
-        logChange(event, requester, "startTime", oldStartTime, event.getStartTime().toString());
-        logChange(event, requester, "endTime", oldEndTime, event.getEndTime().toString());
-        logChange(event, requester, "status", oldStatus, event.getStatus().name());
+        java.util.Map<String, String> changes = new java.util.HashMap<>();
+        
+        if (!Objects.equals(oldVenue, event.getVenueName())) {
+            logChange(event, requester, "venue", oldVenue, event.getVenueName());
+            changes.put("venue", event.getVenueName());
+        }
+        if (!Objects.equals(oldStartTime, event.getStartTime().toString())) {
+            logChange(event, requester, "startTime", oldStartTime, event.getStartTime().toString());
+            changes.put("startTime", event.getStartTime().toString());
+        }
+        if (!Objects.equals(oldEndTime, event.getEndTime().toString())) {
+            logChange(event, requester, "endTime", oldEndTime, event.getEndTime().toString());
+            changes.put("endTime", event.getEndTime().toString());
+        }
+        if (!Objects.equals(oldStatus, event.getStatus().name())) {
+            logChange(event, requester, "status", oldStatus, event.getStatus().name());
+            changes.put("status", event.getStatus().name());
+        }
+        
+        if (!changes.isEmpty() && event.getStatus() == EventStatus.PUBLISHED) {
+            eventPublisher.publishEvent(new EventUpdatedEvent(event.getId(), event.getTitle(), changes));
+        }
 
         return toResponse(event);
     }
@@ -141,7 +171,12 @@ public class EventService {
     public EventResponse publishEvent(Long id, User requester) {
         Event event = findEvent(id);
         ensureOwnerOrSuperAdmin(event, requester);
-        event.setStatus(EventStatus.PUBLISHED);
+        
+        if (event.getStatus() != EventStatus.PUBLISHED) {
+            event.setStatus(EventStatus.PUBLISHED);
+            eventPublisher.publishEvent(new EventPublishedEvent(event.getId(), event.getTitle()));
+        }
+        
         return toResponse(event);
     }
 
@@ -157,6 +192,9 @@ public class EventService {
         event.setCancelledReason(request.getReason());
         event.setCancelledAt(LocalDateTime.now());
         logChange(event, requester, "status", oldStatus, "CANCELLED");
+        
+        eventPublisher.publishEvent(new EventCancelledEvent(event.getId(), event.getTitle(), request.getReason()));
+        
         return toResponse(event);
     }
 

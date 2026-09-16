@@ -23,6 +23,8 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
 
     Page<Registration> findByEvent(Event event, Pageable pageable);
     
+    List<Registration> findByEventIdAndStatusNotIn(Long eventId, List<RegistrationStatus> statuses);
+    
     Page<Registration> findByEventAndStatus(Event event, RegistrationStatus status, Pageable pageable);
     
     List<Registration> findByParticipantOrderByRegisteredAtDesc(User participant);

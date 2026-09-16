@@ -1,14 +1,16 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Radio,
   ShieldCheck,
   CalendarClock,
   Users,
   LayoutDashboard,
-  LogOut
+  LogOut,
+  Bell
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext.jsx";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import * as relayApi from "../api/relayApi.js";
 
 const ROLE_DISPLAY = {
   SUPER_ADMIN: { label: "Super Admin", icon: ShieldCheck },
@@ -29,6 +31,16 @@ const NAV_LABEL = {
 export default function Sidebar() {
   const { user, role, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (user) {
+      relayApi.getUnreadNotificationCount()
+        .then(res => setUnreadCount(res.count))
+        .catch(err => console.error("Failed to load notifications", err));
+    }
+  }, [user, location.pathname]); // Refresh count on navigation
 
   const handleLogout = async () => {
     await logout();
@@ -66,16 +78,27 @@ export default function Sidebar() {
 
       {/* Bottom nav */}
       <div className="relay-nav">
-        <div className="relay-nav-item active" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
+        <div className={`relay-nav-item ${location.pathname === '/' ? 'active' : ''}`} onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
           <LayoutDashboard size={13} />
           {NAV_LABEL[role] || "Dashboard"}
         </div>
         {role === "PARTICIPANT" && (
-          <div className="relay-nav-item" onClick={() => navigate("/my-registrations")} style={{ cursor: "pointer" }}>
+          <div className={`relay-nav-item ${location.pathname === '/my-registrations' ? 'active' : ''}`} onClick={() => navigate("/my-registrations")} style={{ cursor: "pointer" }}>
             <CalendarClock size={13} />
             My Registrations
           </div>
         )}
+        <div className={`relay-nav-item ${location.pathname === '/notifications' ? 'active' : ''}`} onClick={() => navigate("/notifications")} style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <Bell size={13} />
+            Notifications
+          </div>
+          {unreadCount > 0 && (
+            <div style={{ background: "#ef4444", color: "#fff", fontSize: "10px", fontWeight: "bold", padding: "2px 6px", borderRadius: "10px" }}>
+              {unreadCount}
+            </div>
+          )}
+        </div>
         <button
           className="relay-nav-item"
           onClick={handleLogout}

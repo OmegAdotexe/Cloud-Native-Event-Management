@@ -27,16 +27,16 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-public ResponseEntity<Map<String, Object>> handleAccessDeniedException(
-        AccessDeniedException ex) {
+    public ResponseEntity<Map<String, Object>> handleAccessDeniedException(
+            AccessDeniedException ex) {
 
-    Map<String, Object> body = new HashMap<>();
-    body.put("timestamp", LocalDateTime.now());
-    body.put("message", "Forbidden");
-    body.put("status", HttpStatus.FORBIDDEN.value());
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("message", ex.getMessage());
+        body.put("status", HttpStatus.FORBIDDEN.value());
 
-    return new ResponseEntity<>(body, HttpStatus.FORBIDDEN);
-}
+        return new ResponseEntity<>(body, HttpStatus.FORBIDDEN);
+    }
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGlobalException(Exception ex) {
         log.error("Unhandled application exception", ex);

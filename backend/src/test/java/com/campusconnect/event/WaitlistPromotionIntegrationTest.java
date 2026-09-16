@@ -36,10 +36,12 @@ class WaitlistPromotionIntegrationTest {
     @Autowired UserRepository userRepository;
     @Autowired EventRepository eventRepository;
     @Autowired RegistrationRepository registrationRepository;
+    @Autowired com.campusconnect.notification.repository.NotificationRepository notificationRepository;
     @Autowired JwtService jwtService;
 
     @BeforeEach
     void setUp() {
+        notificationRepository.deleteAll();
         registrationRepository.deleteAll();
         eventRepository.deleteAll();
         userRepository.deleteAll();

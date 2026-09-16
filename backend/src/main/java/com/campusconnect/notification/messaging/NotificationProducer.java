@@ -104,15 +104,19 @@ public class NotificationProducer {
         StringBuilder message = new StringBuilder("The following details were updated for " + event.getTitle() + ": ");
         
         java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("MMM dd, yyyy h:mm a");
+        java.util.List<String> changeSnippets = new java.util.ArrayList<>();
         event.getChanges().forEach((k, v) -> {
             String displayVal = v;
             if (k.toLowerCase().contains("time") && v.contains("T")) {
                 try {
-                    displayVal = java.time.LocalDateTime.parse(v).format(formatter);
+                    String cleanV = v.endsWith("Z") ? v.substring(0, v.length() - 1) : v;
+                    displayVal = java.time.LocalDateTime.parse(cleanV).format(formatter);
                 } catch (Exception ignored) { }
             }
-            message.append(k).append(" to '").append(displayVal).append("', ");
+            String displayKey = k.substring(0, 1).toUpperCase() + k.substring(1).replaceAll("([A-Z])", " $1").trim();
+            changeSnippets.add(displayKey + " to '" + displayVal + "'");
         });
+        message.append(String.join(", ", changeSnippets)).append(".");
         
         NotificationType type = NotificationType.EVENT_UPDATED;
         if (event.getChanges().containsKey("venue")) type = NotificationType.EVENT_VENUE_CHANGED;
@@ -130,28 +134,29 @@ public class NotificationProducer {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleTimelineItemCreated(TimelineItemCreatedEvent event) {
         log.info("TimelineItem created for event {}. Notifying active participants.", event.getEventId());
-        notifyTimelineChange(event.getEventId(), "Schedule Updated: " + event.getTitle(), "A new timeline item was added to the schedule.");
+        notifyTimelineChange(event.getEventId(), event.getTitle(), "A new timeline item was added to the schedule.");
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleTimelineItemUpdated(TimelineItemUpdatedEvent event) {
         log.info("TimelineItem updated for event {}. Notifying active participants.", event.getEventId());
-        notifyTimelineChange(event.getEventId(), "Schedule Updated: " + event.getTitle(), "A timeline item was updated in the schedule.");
+        notifyTimelineChange(event.getEventId(), event.getTitle(), "A timeline item was updated in the schedule.");
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleTimelineItemDeleted(TimelineItemDeletedEvent event) {
         log.info("TimelineItem deleted for event {}. Notifying active participants.", event.getEventId());
-        notifyTimelineChange(event.getEventId(), "Schedule Updated: " + event.getTitle(), "A timeline item was removed from the schedule.");
+        notifyTimelineChange(event.getEventId(), event.getTitle(), "A timeline item was removed from the schedule.");
     }
 
-    private void notifyTimelineChange(Long eventId, String title, String message) {
+    private void notifyTimelineChange(Long eventId, String itemTitle, String message) {
         registrationRepository.findByEventIdAndStatusNotIn(eventId, List.of(RegistrationStatus.CANCELLED, RegistrationStatus.REJECTED))
                 .forEach(registration -> {
+                    String eventTitle = registration.getEvent().getTitle();
                     sendNotification(registration.getParticipant().getId(), eventId, NotificationType.TIMELINE_UPDATED,
-                            title, message);
+                            "Schedule Updated: " + eventTitle, message + " Item: " + itemTitle);
                 });
     }
 

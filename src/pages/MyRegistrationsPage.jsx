@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { CalendarClock, MapPin } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext.jsx";
 import * as relayApi from "../api/relayApi.js";
+import TimelineDisplay from "../components/TimelineDisplay.jsx";
 
 export default function MyRegistrationsPage() {
   const { user } = useAuth();
@@ -9,6 +10,7 @@ export default function MyRegistrationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
 
   const fetchRegistrations = async () => {
     setIsLoading(true);
@@ -56,7 +58,12 @@ export default function MyRegistrationsPage() {
           {!isLoading && !error && registrations.length === 0 && <div className="relay-empty">You haven't registered for any events yet.</div>}
           
           {registrations.map((reg) => (
-            <div key={reg.id} className="relay-card" style={{ marginTop: 8, padding: "16px" }}>
+            <div 
+              key={reg.id} 
+              className="relay-card" 
+              style={{ marginTop: 8, padding: "16px", cursor: "pointer", transition: "all 0.2s" }}
+              onClick={() => setExpandedId(expandedId === reg.id ? null : reg.id)}
+            >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
                   <div className="relay-event-name" style={{ fontSize: "16px", marginBottom: "4px" }}>
@@ -90,13 +97,31 @@ export default function MyRegistrationsPage() {
                   </div>
                 </div>
               </div>
+
+              {expandedId === reg.id && (
+                <div style={{ marginTop: 24, borderTop: "1px solid var(--border)", paddingTop: 16 }}>
+                  
+                  {(reg.status === 'REJECTED' || reg.status === 'CANCELLED') && reg.reason && (
+                    <div style={{ marginBottom: 16, padding: 12, background: "var(--surface)", borderRadius: 8, borderLeft: "4px solid #ef4444" }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#ef4444", marginBottom: 4 }}>
+                        Reason for {reg.status.toLowerCase()}
+                      </div>
+                      <div style={{ fontSize: 13, color: "var(--text)" }}>
+                        {reg.reason}
+                      </div>
+                    </div>
+                  )}
+
+                  <TimelineDisplay event={{ id: reg.eventId, startTime: reg.eventStartTime }} />
+                </div>
+              )}
               
               {['PENDING', 'CONFIRMED', 'WAITLISTED'].includes(reg.status) && reg.eventStatus === 'PUBLISHED' && (
                 <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
                   <button 
                     className="relay-btn" 
                     disabled={actionLoading} 
-                    onClick={() => handleCancel(reg.eventId, reg.id)}
+                    onClick={(e) => { e.stopPropagation(); handleCancel(reg.eventId, reg.id); }}
                     style={{ backgroundColor: "transparent", color: "#ef4444", border: "1px solid #ef4444" }}
                   >
                     Cancel Registration

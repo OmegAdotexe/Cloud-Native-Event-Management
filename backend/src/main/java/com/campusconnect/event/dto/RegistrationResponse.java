@@ -25,4 +25,5 @@ public class RegistrationResponse {
     LocalDateTime respondedAt;
     Long respondedByAdminId;
     LocalDateTime cancelledAt;
+    String reason;
 }

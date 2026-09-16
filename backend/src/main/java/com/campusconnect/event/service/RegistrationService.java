@@ -123,6 +123,9 @@ public class RegistrationService {
         RegistrationStatus oldStatus = registration.getStatus();
         registration.setStatus(RegistrationStatus.CANCELLED);
         registration.setCancelledAt(LocalDateTime.now());
+        if (reason != null && !reason.trim().isEmpty()) {
+            registration.setReason(reason);
+        }
         registrationRepository.save(registration);
         
         eventPublisher.publishEvent(new RegistrationCancelledEvent(
@@ -217,6 +220,9 @@ public class RegistrationService {
         registration.setStatus(RegistrationStatus.REJECTED);
         registration.setRespondedAt(LocalDateTime.now());
         registration.setRespondedByAdminId(requester.getId());
+        if (reason != null && !reason.trim().isEmpty()) {
+            registration.setReason(reason);
+        }
         
         eventPublisher.publishEvent(new RegistrationRejectedEvent(
                 registration.getId(),
@@ -279,6 +285,7 @@ public class RegistrationService {
                 .respondedAt(registration.getRespondedAt())
                 .respondedByAdminId(registration.getRespondedByAdminId())
                 .cancelledAt(registration.getCancelledAt())
+                .reason(registration.getReason())
                 .build();
     }
 }

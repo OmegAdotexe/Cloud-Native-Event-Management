@@ -82,13 +82,25 @@ export default function NotificationsPage() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {notifications.map((notif) => (
-              <div key={notif.id} className="relay-card" style={{ 
-                opacity: notif.isRead ? 0.6 : 1, 
-                display: "flex", 
-                gap: "16px",
-                alignItems: "flex-start",
-                padding: "16px"
-              }}>
+              <div 
+                key={notif.id} 
+                className="relay-card" 
+                style={{ 
+                  opacity: notif.isRead ? 0.6 : 1, 
+                  display: "flex", 
+                  gap: "16px",
+                  alignItems: "flex-start",
+                  padding: "16px",
+                  cursor: "pointer"
+                }}
+                onClick={() => {
+                  if (notif.type.startsWith("REGISTRATION_")) {
+                    navigate("/my-registrations");
+                  } else {
+                    navigate("/participant");
+                  }
+                }}
+              >
                 <div style={{ marginTop: "2px" }}>
                   {ICONS[notif.type] || <BellRing size={16} />}
                 </div>
@@ -110,7 +122,10 @@ export default function NotificationsPage() {
                       <button 
                         className="relay-btn" 
                         style={{ padding: "4px 10px", fontSize: "11px", background: "transparent", color: "var(--text)", border: "1px solid var(--border)" }}
-                        onClick={() => handleMarkAsRead(notif.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMarkAsRead(notif.id);
+                        }}
                       >
                         Mark as read
                       </button>

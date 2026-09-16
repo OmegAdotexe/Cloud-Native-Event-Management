@@ -40,6 +40,9 @@ public class Registration {
 
     private LocalDateTime cancelledAt;
 
+    @Column(length = 500)
+    private String reason;
+
     @PrePersist
     void onCreate() {
         if (registeredAt == null) {

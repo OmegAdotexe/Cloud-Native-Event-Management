@@ -73,7 +73,19 @@ export default function EventAnalyticsPage() {
             <button className="relay-btn-ghost" onClick={() => navigate(-1)} style={{ padding: "8px" }}>
               <ArrowLeft size={16} />
             </button>
-            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Analytics: {data.title}</h2>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Analytics: {data.title}</h2>
+              <div style={{ fontSize: 13, color: "var(--mute)", marginTop: 4 }}>
+                {new Date(data.startTime).toLocaleString()}
+                {" • "}
+                <button 
+                  onClick={() => navigate('/events', { state: { editEventId: data.eventId, tab: 'REGISTRATIONS' }})}
+                  style={{ background: "none", border: "none", padding: 0, color: "var(--blue)", cursor: "pointer", textDecoration: "underline" }}
+                >
+                  Manage Registrations
+                </button>
+              </div>
+            </div>
           </div>
           <span style={{ 
             padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600,
@@ -94,6 +106,13 @@ export default function EventAnalyticsPage() {
             </div>
           </div>
           <div className="relay-stat-card">
+            <div className="relay-stat-icon purple"><Users size={20} /></div>
+            <div>
+              <div className="relay-stat-num">{data.pendingCount}</div>
+              <div className="relay-stat-label">Pending Approval</div>
+            </div>
+          </div>
+          <div className="relay-stat-card">
             <div className="relay-stat-icon amber"><Clock size={20} /></div>
             <div>
               <div className="relay-stat-num">{data.waitlistCount}</div>
@@ -101,17 +120,26 @@ export default function EventAnalyticsPage() {
             </div>
           </div>
           <div className="relay-stat-card">
-            <div className="relay-stat-icon purple"><Users size={20} /></div>
+            <div className="relay-stat-icon blue"><Calendar size={20} /></div>
             <div>
-              <div className="relay-stat-num">{data.capacity}</div>
+              <div className="relay-stat-num">{data.capacityUtilization ? data.capacityUtilization.toFixed(1) : "0.0"}%</div>
+              <div className="relay-stat-label">Capacity Filled</div>
+            </div>
+          </div>
+          <div className="relay-stat-card">
+            <div className="relay-stat-icon"><Users size={20} /></div>
+            <div>
+              <div className="relay-stat-num">{data.capacity > 0 ? data.capacity : "N/A"}</div>
               <div className="relay-stat-label">Total Capacity</div>
             </div>
           </div>
           <div className="relay-stat-card">
-            <div className="relay-stat-icon blue"><Calendar size={20} /></div>
+            <div className="relay-stat-icon"><AlertCircle size={20} /></div>
             <div>
-              <div className="relay-stat-num">{data.capacityUtilization.toFixed(1)}%</div>
-              <div className="relay-stat-label">Capacity Filled</div>
+              <div className="relay-stat-num" style={{ fontSize: 16 }}>
+                {!data.registrationDeadline ? "Open" : new Date() > new Date(data.registrationDeadline) ? "Closed" : "Open"}
+              </div>
+              <div className="relay-stat-label">Deadline Status</div>
             </div>
           </div>
         </div>
@@ -152,7 +180,7 @@ export default function EventAnalyticsPage() {
 
           {/* Registration Trend Chart */}
           <div className="relay-card">
-            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 20 }}>Registration Trend</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 20 }}>New Registrations per Day</h3>
             {trendData.length > 0 ? (
               <div style={{ height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -176,10 +204,10 @@ export default function EventAnalyticsPage() {
 
           {/* Registration Funnel summary text */}
           <div className="relay-card" style={{ gridColumn: "1 / -1" }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 20 }}>Registration Summary</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 20 }}>Registration Status Summary</h3>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 30 }}>
               <div>
-                <div style={{ fontSize: 12, color: "var(--mute)", marginBottom: 4 }}>Total Attempts</div>
+                <div style={{ fontSize: 12, color: "var(--mute)", marginBottom: 4 }}>Total Attempts (All Statuses)</div>
                 <div style={{ fontSize: 24, fontWeight: 700 }}>
                   {data.confirmedRegistrations + data.pendingCount + data.waitlistCount + data.rejectedCount + data.cancelledCount}
                 </div>

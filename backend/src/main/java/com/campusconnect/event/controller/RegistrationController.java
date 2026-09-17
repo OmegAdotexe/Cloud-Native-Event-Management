@@ -63,4 +63,14 @@ public class RegistrationController {
             @AuthenticationPrincipal User user) {
         return ResponseEntity.ok(registrationService.getEventRegistrations(eventId, status, pageable, user));
     }
+
+    @GetMapping(value = "/{eventId}/registrations/export", produces = "text/csv")
+    public ResponseEntity<String> exportRegistrationsCsv(
+            @PathVariable Long eventId,
+            @AuthenticationPrincipal User user) {
+        String csv = registrationService.exportRegistrationsCsv(eventId, user);
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"registrations_" + eventId + ".csv\"")
+                .body(csv);
+    }
 }

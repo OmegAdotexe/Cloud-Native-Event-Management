@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext.jsx";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import * as relayApi from "../api/relayApi.js";
 import { 
   Calendar, CheckCircle2, Users, Clock, Edit, FileText, Search, Plus
@@ -14,6 +14,7 @@ const toInputTime = (value) => value ? value.slice(0, 16) : "";
 export default function AdminPage({ events, isLoading, error, onRefresh }) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
   
   const [dashboard, setDashboard] = useState(null);
@@ -26,6 +27,21 @@ export default function AdminPage({ events, isLoading, error, onRefresh }) {
   const [activeTab, setActiveTab] = useState("DETAILS");
   
   const selected = events.find((event) => event.id === selectedId);
+
+  useEffect(() => {
+    if (location.state?.editEventId && events.length > 0) {
+      const ev = events.find(e => e.id === location.state.editEventId);
+      if (ev) {
+        setSelectedId(ev.id);
+        setForm({ ...ev, startTime: toInputTime(ev.startTime), endTime: toInputTime(ev.endTime), registrationDeadline: toInputTime(ev.registrationDeadline) });
+        if (location.state.tab) {
+          setActiveTab(location.state.tab);
+        }
+        // clear state so it doesn't reopen on subsequent refreshes
+        window.history.replaceState({}, document.title);
+      }
+    }
+  }, [location.state, events]);
 
   useEffect(() => {
     relayApi.getAdminDashboard()
@@ -97,21 +113,21 @@ export default function AdminPage({ events, isLoading, error, onRefresh }) {
               <div className="relay-stat-icon amber"><Calendar size={20} /></div>
               <div>
                 <div className="relay-stat-num">{dashboard.totalEvents}</div>
-                <div className="relay-stat-label">Total Events</div>
+                <div className="relay-stat-label">All Events</div>
               </div>
             </div>
             <div className="relay-stat-card">
               <div className="relay-stat-icon teal"><CheckCircle2 size={20} /></div>
               <div>
                 <div className="relay-stat-num">{dashboard.publishedEvents}</div>
-                <div className="relay-stat-label">Published</div>
+                <div className="relay-stat-label">Published Events</div>
               </div>
             </div>
             <div className="relay-stat-card">
               <div className="relay-stat-icon blue"><Users size={20} /></div>
               <div>
                 <div className="relay-stat-num">{dashboard.totalRegistrations}</div>
-                <div className="relay-stat-label">Registrations</div>
+                <div className="relay-stat-label">Total Registrations</div>
               </div>
             </div>
             <div className="relay-stat-card">
@@ -287,6 +303,7 @@ export default function AdminPage({ events, isLoading, error, onRefresh }) {
                       <th style={{ padding: "12px 8px", fontWeight: 600 }}>Title</th>
                       <th style={{ padding: "12px 8px", fontWeight: 600 }}>Status</th>
                       <th style={{ padding: "12px 8px", fontWeight: 600 }}>Date</th>
+                      <th style={{ padding: "12px 8px", fontWeight: 600 }}>Deadline</th>
                       <th style={{ padding: "12px 8px", fontWeight: 600 }}>Capacity</th>
                       <th style={{ padding: "12px 8px", fontWeight: 600, textAlign: "right" }}>Actions</th>
                     </tr>
@@ -307,9 +324,19 @@ export default function AdminPage({ events, isLoading, error, onRefresh }) {
                         <td style={{ padding: "12px 8px", color: "var(--text-secondary)" }}>
                           {new Date(event.startTime).toLocaleDateString()}
                         </td>
+                        <td style={{ padding: "12px 8px", color: "var(--text-secondary)" }}>
+                          {event.registrationDeadline ? new Date(event.registrationDeadline).toLocaleDateString() : "None"}
+                        </td>
                         <td style={{ padding: "12px 8px", color: "var(--text-secondary)" }}>{event.capacity}</td>
                         <td style={{ padding: "12px 8px", textAlign: "right" }}>
                           <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                            <button 
+                              onClick={() => { edit(event); setTimeout(() => setActiveTab("REGISTRATIONS"), 0); }}
+                              style={{ background: "none", border: "1px solid var(--border)", padding: "6px", borderRadius: "6px", cursor: "pointer", color: "var(--mute)", display: "flex", alignItems: "center" }}
+                              title="Manage Registrations"
+                            >
+                              <Users size={14} />
+                            </button>
                             <button 
                               onClick={() => edit(event)}
                               style={{ background: "none", border: "1px solid var(--border)", padding: "6px", borderRadius: "6px", cursor: "pointer", color: "var(--mute)", display: "flex", alignItems: "center" }}

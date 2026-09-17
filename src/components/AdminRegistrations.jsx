@@ -109,19 +109,37 @@ export default function AdminRegistrations({ event }) {
       )}
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
-        <select 
-          className="relay-input" 
-          style={{ width: "200px" }}
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
-        >
-          <option value="">All Statuses</option>
-          <option value="PENDING">PENDING</option>
-          <option value="CONFIRMED">CONFIRMED</option>
-          <option value="WAITLISTED">WAITLISTED</option>
-          <option value="REJECTED">REJECTED</option>
-          <option value="CANCELLED">CANCELLED</option>
-        </select>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <select 
+            className="relay-input" 
+            style={{ width: "200px" }}
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
+          >
+            <option value="">All Statuses</option>
+            <option value="PENDING">PENDING</option>
+            <option value="CONFIRMED">CONFIRMED</option>
+            <option value="WAITLISTED">WAITLISTED</option>
+            <option value="REJECTED">REJECTED</option>
+            <option value="CANCELLED">CANCELLED</option>
+          </select>
+          <button 
+            className="relay-btn-ghost relay-btn-sm" 
+            disabled={actionLoading}
+            onClick={async () => {
+              setActionLoading(true);
+              try {
+                await relayApi.exportRegistrationsCsv(event.id);
+              } catch(e) {
+                alert("Failed to export CSV");
+              } finally {
+                setActionLoading(false);
+              }
+            }}
+          >
+            Download CSV
+          </button>
+        </div>
         
         <div style={{ display: "flex", gap: "8px", alignItems: "center", fontSize: "12px", color: "var(--text-secondary)" }}>
           <button className="relay-btn-ghost relay-btn-sm" disabled={page === 0 || loading} onClick={() => setPage(p => p - 1)}>Prev</button>

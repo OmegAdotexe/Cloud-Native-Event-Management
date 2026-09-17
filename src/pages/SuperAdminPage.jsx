@@ -70,7 +70,7 @@ export default function SuperAdminPage({ events, isLoading, error }) {
                 <div className="relay-stat-icon blue"><AlertCircle size={20} /></div>
                 <div>
                   <div className="relay-stat-num">{dashboard.totalNotifications}</div>
-                  <div className="relay-stat-label">Notifications Sent</div>
+                  <div className="relay-stat-label">Total Notifications Processed</div>
                 </div>
               </div>
             </div>
@@ -150,6 +150,7 @@ export default function SuperAdminPage({ events, isLoading, error }) {
                     <th style={{ padding: "12px 8px", fontWeight: 600 }}>Organizer</th>
                     <th style={{ padding: "12px 8px", fontWeight: 600 }}>Status</th>
                     <th style={{ padding: "12px 8px", fontWeight: 600 }}>Date</th>
+                    <th style={{ padding: "12px 8px", fontWeight: 600 }}>Deadline</th>
                     <th style={{ padding: "12px 8px", fontWeight: 600 }}>Capacity</th>
                     <th style={{ padding: "12px 8px", fontWeight: 600, textAlign: "right" }}>Actions</th>
                   </tr>
@@ -170,6 +171,9 @@ export default function SuperAdminPage({ events, isLoading, error }) {
                       </td>
                       <td style={{ padding: "12px 8px", color: "var(--text-secondary)" }}>
                         {new Date(event.startTime).toLocaleDateString()}
+                      </td>
+                      <td style={{ padding: "12px 8px", color: "var(--text-secondary)" }}>
+                        {event.registrationDeadline ? new Date(event.registrationDeadline).toLocaleDateString() : "None"}
                       </td>
                       <td style={{ padding: "12px 8px", color: "var(--text-secondary)" }}>{event.capacity}</td>
                       <td style={{ padding: "12px 8px", textAlign: "right" }}>

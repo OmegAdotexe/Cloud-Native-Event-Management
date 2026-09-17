@@ -250,6 +250,26 @@ public class RegistrationService {
         return page.map(this::toResponse);
     }
 
+    public String exportRegistrationsCsv(Long eventId, User requester) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EntityNotFoundException("Event not found"));
+        ensureOwnerOrSuperAdmin(event, requester);
+        
+        List<Registration> registrations = registrationRepository.findByEventOrderByRegisteredAtDesc(event);
+        StringBuilder sb = new StringBuilder();
+        sb.append("Registration ID,Participant ID,Participant Name,Status,Registered At,Cancelled At,Reason\n");
+        for (Registration r : registrations) {
+            sb.append(r.getId()).append(",")
+              .append(r.getParticipant().getId()).append(",")
+              .append("\"").append(r.getParticipant().getName().replace("\"", "\"\"")).append("\",")
+              .append(r.getStatus().name()).append(",")
+              .append(r.getRegisteredAt()).append(",")
+              .append(r.getCancelledAt() != null ? r.getCancelledAt() : "").append(",")
+              .append("\"").append(r.getReason() != null ? r.getReason().replace("\"", "\"\"") : "").append("\"\n");
+        }
+        return sb.toString();
+    }
+
     public List<RegistrationResponse> getMyRegistrations(User participant) {
         return registrationRepository.findByParticipantOrderByRegisteredAtDesc(participant)
                 .stream().map(this::toResponse).toList();

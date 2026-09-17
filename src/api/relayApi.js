@@ -206,6 +206,21 @@ export async function getEventRegistrations(eventId, status, page = 0, size = 10
   return authFetch(`/api/events/${eventId}/registrations?${params.toString()}`);
 }
 
+export async function exportRegistrationsCsv(eventId) {
+  const token = getToken();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await fetch(`${API_BASE_URL}/api/events/${eventId}/registrations/export`, { headers });
+  if (!response.ok) throw new Error("Failed to export CSV");
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `registrations_${eventId}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 export async function getMyRegistrations() {
   return authFetch("/api/participants/me/registrations");
 }

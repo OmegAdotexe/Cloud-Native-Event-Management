@@ -6,6 +6,7 @@ import com.campusconnect.event.model.EventStatus;
 import com.campusconnect.user.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import jakarta.persistence.LockModeType;
@@ -24,4 +25,15 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT e FROM Event e WHERE e.id = :id")
     Optional<Event> findByIdForUpdate(Long id);
+
+    long countByCreatedBy(User user);
+    long countByCreatedByAndStatus(User user, EventStatus status);
+    
+    @Query("SELECT COUNT(e) FROM Event e WHERE e.createdBy = :user AND e.startTime > CURRENT_TIMESTAMP AND e.status != 'CANCELLED'")
+    long countUpcomingByCreatedBy(@Param("user") User user);
+
+    long countByStatus(EventStatus status);
+    
+    @Query("SELECT COUNT(e) FROM Event e WHERE e.startTime > CURRENT_TIMESTAMP AND e.status != 'CANCELLED'")
+    long countUpcomingEvents();
 }

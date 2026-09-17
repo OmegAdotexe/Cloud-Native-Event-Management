@@ -87,7 +87,10 @@ export async function reassignEvent(id, newEventAdminId) {
 }
 
 // ---------------------------------------------------------------------------
-// Notifications
+// Analytics
+export const getAdminDashboard = () => authFetch('/api/analytics/admin');
+export const getSuperAdminDashboard = () => authFetch('/api/analytics/superadmin');
+export const getEventAnalytics = (eventId) => authFetch(`/api/analytics/events/${eventId}`);
 // ---------------------------------------------------------------------------
 
 export async function getNotifications(page = 0, size = 20) {

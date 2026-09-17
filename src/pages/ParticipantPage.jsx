@@ -222,7 +222,7 @@ export default function ParticipantPage({ events, isLoading, error }) {
               const isPastDeadline = event.registrationDeadline && new Date(event.registrationDeadline) < new Date();
 
               return (
-                <div key={event.id} className="relay-event-row">
+                <div key={event.id} className="relay-event-row" style={{ cursor: "pointer" }} onClick={() => navigate(`/event/${event.id}`)}>
                   <div className="relay-event-icon" style={{ background: category.bg }}>
                     {category.icon}
                   </div>
@@ -242,7 +242,7 @@ export default function ParticipantPage({ events, isLoading, error }) {
                       <button
                         className="relay-btn-sm relay-btn"
                         disabled={actionLoading}
-                        onClick={() => handleRegister(event.id)}
+                        onClick={(e) => { e.stopPropagation(); handleRegister(event.id); }}
                         style={{ fontSize: "11px", padding: "4px 10px" }}
                       >
                         Register
@@ -252,7 +252,7 @@ export default function ParticipantPage({ events, isLoading, error }) {
                       <button
                         className="relay-btn-danger relay-btn-sm"
                         disabled={actionLoading}
-                        onClick={() => handleCancel(event.id, reg.id)}
+                        onClick={(e) => { e.stopPropagation(); handleCancel(event.id, reg.id); }}
                         style={{ fontSize: "11px", padding: "4px 10px" }}
                       >
                         Cancel
@@ -312,7 +312,7 @@ export default function ParticipantPage({ events, isLoading, error }) {
                         <td>
                           <button
                             className="relay-btn-view"
-                            onClick={() => navigate("/my-registrations")}
+                            onClick={() => navigate(`/event/${reg.eventId}`)}
                           >
                             View
                           </button>
@@ -345,7 +345,7 @@ export default function ParticipantPage({ events, isLoading, error }) {
               notifications.slice(0, 5).map(notif => {
                 const iconConfig = NOTIF_ICONS[notif.type] || NOTIF_ICONS.EVENT_UPDATED || { icon: <BellRing size={16} />, bg: "#F0EDE8", color: "#8B90A5" };
                 return (
-                  <div key={notif.id} className="relay-notif-item" style={{ cursor: "pointer" }} onClick={() => navigate("/notifications")}>
+                  <div key={notif.id} className="relay-notif-item" style={{ cursor: "pointer" }} onClick={() => notif.eventId ? navigate(`/event/${notif.eventId}`) : navigate("/notifications")}>
                     <div className="relay-notif-icon-circle" style={{ background: iconConfig.bg, color: iconConfig.color }}>
                       {iconConfig.icon}
                     </div>

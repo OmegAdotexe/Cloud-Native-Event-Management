@@ -12,6 +12,7 @@ import MyRegistrationsPage from "./pages/MyRegistrationsPage.jsx";
 import NotificationsPage from "./pages/NotificationsPage.jsx";
 import SuperAdminPage from "./pages/SuperAdminPage.jsx";
 import ParticipantEventsPage from "./pages/ParticipantEventsPage.jsx";
+import EventDetailPage from "./pages/EventDetailPage.jsx";
 
 function ProtectedRoute({ children }) {
   const { token, isLoading } = useAuth();
@@ -102,6 +103,7 @@ function MainApp() {
           {role === "PARTICIPANT" && <ParticipantEventsPage {...shared} />}
         </>} />
         {role === "PARTICIPANT" && <Route path="/my-registrations" element={<MyRegistrationsPage />} />}
+        <Route path="/event/:eventId" element={<EventDetailPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
       </Routes>
     </div>

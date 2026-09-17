@@ -98,7 +98,9 @@ export default function NotificationsPage() {
                     transition: "opacity 0.2s",
                   }}
                   onClick={() => {
-                    if (notif.type.startsWith("REGISTRATION_")) {
+                    if (notif.eventId) {
+                      navigate(`/event/${notif.eventId}`);
+                    } else if (notif.type.startsWith("REGISTRATION_")) {
                       navigate("/my-registrations");
                     } else {
                       navigate("/");

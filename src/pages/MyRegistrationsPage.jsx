@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { CalendarClock, MapPin, ChevronDown, ChevronUp } from "lucide-react";
+import { CalendarClock, MapPin, ChevronRight } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext.jsx";
+import { useNavigate } from "react-router-dom";
 import * as relayApi from "../api/relayApi.js";
-import TimelineDisplay from "../components/TimelineDisplay.jsx";
 
 function getStatusStyle(status) {
   switch (status) {
@@ -17,11 +17,11 @@ function getStatusStyle(status) {
 
 export default function MyRegistrationsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [registrations, setRegistrations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
-  const [expandedId, setExpandedId] = useState(null);
 
   const fetchRegistrations = async () => {
     setIsLoading(true);
@@ -40,7 +40,8 @@ export default function MyRegistrationsPage() {
     fetchRegistrations();
   }, []);
 
-  const handleCancel = async (eventId, registrationId) => {
+  const handleCancel = async (e, eventId, registrationId) => {
+    e.stopPropagation();
     if (!window.confirm("Are you sure you want to cancel your registration?")) return;
     
     setActionLoading(true);
@@ -70,13 +71,12 @@ export default function MyRegistrationsPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           {registrations.map((reg) => {
             const statusStyle = getStatusStyle(reg.status);
-            const isExpanded = expandedId === reg.id;
             return (
               <div 
                 key={reg.id} 
                 className="relay-card" 
                 style={{ cursor: "pointer", transition: "all 0.2s" }}
-                onClick={() => setExpandedId(isExpanded ? null : reg.id)}
+                onClick={() => navigate(`/event/${reg.eventId}`)}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div style={{ flex: 1 }}>
@@ -95,6 +95,11 @@ export default function MyRegistrationsPage() {
                       Registered on: {new Date(reg.registeredAt).toLocaleString()}
                       <span style={{ marginLeft: "16px" }}>Event Status: {reg.eventStatus}</span>
                     </div>
+                    {reg.reason && (reg.status === 'CANCELLED' || reg.status === 'REJECTED') && (
+                      <div style={{ marginTop: 8, fontSize: 12, color: "var(--coral)", fontStyle: "italic" }}>
+                        Reason: {reg.reason}
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     <div style={{ 
@@ -108,34 +113,16 @@ export default function MyRegistrationsPage() {
                     }}>
                       {reg.status}
                     </div>
-                    {isExpanded ? <ChevronUp size={16} color="var(--mute)" /> : <ChevronDown size={16} color="var(--mute)" />}
+                    <ChevronRight size={16} color="var(--mute)" />
                   </div>
                 </div>
 
-                {isExpanded && (
-                  <div style={{ marginTop: 20, borderTop: "1px solid var(--border)", paddingTop: 16 }}>
-                    
-                    {(reg.status === 'REJECTED' || reg.status === 'CANCELLED') && reg.reason && (
-                      <div style={{ marginBottom: 16, padding: 14, background: "var(--coral-light)", borderRadius: 10, borderLeft: "4px solid var(--coral)" }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--coral)", marginBottom: 4 }}>
-                          Reason for {reg.status.toLowerCase()}
-                        </div>
-                        <div style={{ fontSize: 13, color: "var(--text)" }}>
-                          {reg.reason}
-                        </div>
-                      </div>
-                    )}
-
-                    <TimelineDisplay event={{ id: reg.eventId, startTime: reg.eventStartTime }} />
-                  </div>
-                )}
-                
                 {['PENDING', 'CONFIRMED', 'WAITLISTED'].includes(reg.status) && reg.eventStatus === 'PUBLISHED' && (
                   <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
                     <button 
                       className="relay-btn-danger" 
                       disabled={actionLoading} 
-                      onClick={(e) => { e.stopPropagation(); handleCancel(reg.eventId, reg.id); }}
+                      onClick={(e) => handleCancel(e, reg.eventId, reg.id)}
                     >
                       Cancel Registration
                     </button>

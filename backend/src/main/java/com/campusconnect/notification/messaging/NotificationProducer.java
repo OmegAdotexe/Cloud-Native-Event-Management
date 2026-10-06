@@ -5,6 +5,7 @@ import com.campusconnect.event.repository.RegistrationRepository;
 import com.campusconnect.notification.config.RabbitMQConfig;
 import com.campusconnect.notification.dto.NotificationMessage;
 import com.campusconnect.notification.model.NotificationType;
+import com.campusconnect.notification.model.NotificationChannel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -31,7 +32,7 @@ public class NotificationProducer {
         log.info("Sending REGISTRATION_CONFIRMED notification for registrationId: {}", event.getRegistrationId());
         registrationRepository.findById(event.getRegistrationId()).ifPresent(registration -> {
             sendNotification(event.getParticipantId(), event.getEventId(), NotificationType.REGISTRATION_CONFIRMED, 
-                    "Registration Confirmed", "Your registration has been confirmed for: " + registration.getEvent().getTitle());
+                    "Registration Confirmed", "Your registration has been confirmed for: " + registration.getEvent().getTitle(), NotificationChannel.EMAIL);
         });
     }
 
@@ -41,7 +42,7 @@ public class NotificationProducer {
         log.info("Sending REGISTRATION_WAITLISTED notification for registrationId: {}", event.getRegistrationId());
         registrationRepository.findById(event.getRegistrationId()).ifPresent(registration -> {
             sendNotification(event.getParticipantId(), event.getEventId(), NotificationType.REGISTRATION_WAITLISTED,
-                    "Waitlist Joined", "You have been placed on the waitlist for: " + registration.getEvent().getTitle());
+                    "Waitlist Joined", "You have been placed on the waitlist for: " + registration.getEvent().getTitle(), NotificationChannel.EMAIL);
         });
     }
 
@@ -51,7 +52,7 @@ public class NotificationProducer {
         log.info("Sending REGISTRATION_PENDING admin notification for registrationId: {}", event.getRegistrationId());
         registrationRepository.findById(event.getRegistrationId()).ifPresent(registration -> {
             sendNotification(registration.getEvent().getCreatedBy().getId(), event.getEventId(), NotificationType.REGISTRATION_PENDING,
-                    "Registration Pending Approval", registration.getParticipant().getName() + " has requested to join: " + registration.getEvent().getTitle());
+                    "Registration Pending Approval", registration.getParticipant().getName() + " has requested to join: " + registration.getEvent().getTitle(), NotificationChannel.IN_APP);
         });
     }
 
@@ -60,7 +61,7 @@ public class NotificationProducer {
     public void handleRegistrationRejected(RegistrationRejectedEvent event) {
         log.info("Sending REGISTRATION_REJECTED notification for registrationId: {}", event.getRegistrationId());
         sendNotification(event.getParticipantId(), event.getEventId(), NotificationType.REGISTRATION_REJECTED,
-                "Registration Rejected", "Your registration for this event was rejected by an admin.");
+                "Registration Rejected", "Your registration for this event was rejected by an admin.", NotificationChannel.EMAIL);
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -73,7 +74,7 @@ public class NotificationProducer {
                 msg = "Your registration for " + registration.getEvent().getTitle() + " was cancelled by an admin. Reason: " + event.getReason();
             }
             sendNotification(event.getParticipantId(), event.getEventId(), NotificationType.REGISTRATION_CANCELLED,
-                    "Registration Cancelled", msg);
+                    "Registration Cancelled", msg, NotificationChannel.EMAIL);
         });
     }
 
@@ -93,7 +94,7 @@ public class NotificationProducer {
         registrationRepository.findByEventIdAndStatusNotIn(event.getEventId(), List.of(RegistrationStatus.CANCELLED, RegistrationStatus.REJECTED))
                 .forEach(registration -> {
                     sendNotification(registration.getParticipant().getId(), event.getEventId(), NotificationType.EVENT_CANCELLED,
-                            "Event Cancelled: " + event.getTitle(), "This event has been cancelled. Reason: " + event.getReason());
+                            "Event Cancelled: " + event.getTitle(), "This event has been cancelled. Reason: " + event.getReason(), NotificationChannel.EMAIL);
                 });
     }
 
@@ -126,7 +127,7 @@ public class NotificationProducer {
         registrationRepository.findByEventIdAndStatusNotIn(event.getEventId(), List.of(RegistrationStatus.CANCELLED, RegistrationStatus.REJECTED))
                 .forEach(registration -> {
                     sendNotification(registration.getParticipant().getId(), event.getEventId(), finalType,
-                            "Event Details Updated: " + event.getTitle(), message.toString());
+                            "Event Details Updated: " + event.getTitle(), message.toString(), NotificationChannel.EMAIL);
                 });
     }
 
@@ -156,11 +157,11 @@ public class NotificationProducer {
                 .forEach(registration -> {
                     String eventTitle = registration.getEvent().getTitle();
                     sendNotification(registration.getParticipant().getId(), eventId, NotificationType.TIMELINE_UPDATED,
-                            "Schedule Updated: " + eventTitle, message + " Item: " + itemTitle);
+                            "Schedule Updated: " + eventTitle, message + " Item: " + itemTitle, NotificationChannel.EMAIL);
                 });
     }
 
-    private void sendNotification(Long recipientId, Long eventId, NotificationType type, String title, String message) {
+    private void sendNotification(Long recipientId, Long eventId, NotificationType type, String title, String message, NotificationChannel channel) {
         NotificationMessage msg = NotificationMessage.builder()
                 .messageId(UUID.randomUUID().toString())
                 .recipientId(recipientId)
@@ -168,6 +169,7 @@ public class NotificationProducer {
                 .type(type)
                 .title(title)
                 .message(message)
+                .channel(channel)
                 .build();
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, "notification.send", msg);
     }

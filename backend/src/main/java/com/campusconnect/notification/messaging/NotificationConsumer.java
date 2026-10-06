@@ -20,6 +20,10 @@ public class NotificationConsumer {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final com.campusconnect.notification.email.EmailProvider emailProvider;
+
+    @org.springframework.beans.factory.annotation.Value("${app.email.enabled:true}")
+    private boolean emailEnabled;
 
     @RabbitListener(queues = "${spring.rabbitmq.template.default-receive-queue:notification.queue}")
     @Transactional
@@ -39,6 +43,9 @@ public class NotificationConsumer {
                 return;
             }
 
+            // Fallback to IN_APP if channel is null
+            NotificationChannel channel = message.getChannel() != null ? message.getChannel() : NotificationChannel.IN_APP;
+
             Notification notification = Notification.builder()
                     .messageId(message.getMessageId())
                     .recipient(recipient)
@@ -46,15 +53,25 @@ public class NotificationConsumer {
                     .type(message.getType())
                     .title(message.getTitle())
                     .message(message.getMessage())
-                    .channel(NotificationChannel.IN_APP)
+                    .channel(channel)
                     .status(NotificationStatus.SENT)
                     .build();
 
             notificationRepository.save(notification);
             log.info("Saved in-app notification successfully for user {}", message.getRecipientId());
             
-            // Note: Email and WhatsApp logic would go here, updating status to FAILED or RETRYING if providers fail.
-            // For now, only IN_APP is implemented.
+            if (channel == NotificationChannel.EMAIL) {
+                if (emailEnabled) {
+                    try {
+                        emailProvider.send(recipient.getEmail(), message.getTitle(), message.getMessage(), message.getType());
+                    } catch (Exception ex) {
+                        log.error("Failed to send email to user {} for message {}. Exception: {}", recipient.getEmail(), message.getMessageId(), ex.getMessage());
+                        // Catch and log without throwing so that we do not crash the consumer and re-process the message
+                    }
+                } else {
+                    log.info("Email dispatch is disabled. Skipping email for message {}", message.getMessageId());
+                }
+            }
             
         } catch (Exception e) {
             log.error("Failed to process notification message {}", message.getMessageId(), e);

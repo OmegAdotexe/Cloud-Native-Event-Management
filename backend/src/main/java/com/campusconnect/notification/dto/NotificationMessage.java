@@ -17,4 +17,5 @@ public class NotificationMessage {
     private NotificationType type;
     private String title;
     private String message;
+    private com.campusconnect.notification.model.NotificationChannel channel;
 }

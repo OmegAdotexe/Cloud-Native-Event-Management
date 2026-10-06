@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title th:text="${title}">Timeline Updated</title>
+    <style>
+        body { margin:0; padding:0; background:#f4f5f7; font-family:'Segoe UI',Arial,sans-serif; }
+        .wrap { max-width:560px; margin:40px auto; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.06); }
+        .header { background:linear-gradient(135deg,#3498db,#2980b9); padding:28px 32px; }
+        .header h1 { margin:0; color:#fff; font-size:20px; font-weight:700; }
+        .body { padding:28px 32px; color:#2d3748; font-size:15px; line-height:1.6; }
+        .badge { display:inline-block; padding:4px 14px; border-radius:20px; font-size:12px; font-weight:600; background:#ebf5fb; color:#2980b9; }
+        .footer { padding:20px 32px; background:#f9fafb; color:#8b90a5; font-size:12px; text-align:center; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="header">
+        <h1>🕒 Timeline Updated</h1>
+    </div>
+    <div class="body">
+        <p>Hi there,</p>
+        <p th:text="${message}">The timeline for an event you are registered for has been updated.</p>
+        <p><span class="badge">UPDATED</span></p>
+        <p>Please check the event page for the latest schedule details.</p>
+    </div>
+    <div class="footer">
+        CampusConnect &middot; Cloud-Native Event Management
+    </div>
+</div>
+</body>
+</html>

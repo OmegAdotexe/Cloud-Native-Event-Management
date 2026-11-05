@@ -3,7 +3,7 @@ import { useAuth } from "../contexts/AuthContext.jsx";
 import { useNavigate } from "react-router-dom";
 import * as relayApi from "../api/relayApi.js";
 import { 
-  Calendar, CheckCircle2, Users, Clock, FileText, Search, Activity, AlertCircle, ShieldCheck
+  Calendar, CheckCircle2, Users, Clock, FileText, Search, Activity, AlertCircle, ShieldCheck, Plus
 } from "lucide-react";
 
 export default function SuperAdminPage({ events, isLoading, error }) {
@@ -36,6 +36,13 @@ export default function SuperAdminPage({ events, isLoading, error }) {
           <h1>Hi, {user?.name || "there"}</h1>
           <p>Platform-wide event operations and analytics.</p>
         </div>
+        <button 
+          className="relay-btn" 
+          onClick={() => navigate("/events", { state: { create: true } })} 
+          style={{ display: "flex", gap: "8px", alignItems: "center" }}
+        >
+          <Plus size={16} /> Create event
+        </button>
       </div>
       <div className="relay-body">
         

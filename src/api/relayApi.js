@@ -29,7 +29,14 @@ async function authFetch(endpoint, options = {}) {
     let message = "An error occurred";
     try {
       const errData = await response.json();
-      message = errData.message || errData.error || message;
+      if (errData.errors && typeof errData.errors === "object") {
+        const fieldErrors = Object.entries(errData.errors)
+          .map(([field, msg]) => `${field}: ${msg}`)
+          .join(". ");
+        message = fieldErrors || errData.message || message;
+      } else {
+        message = errData.message || errData.error || message;
+      }
     } catch {
       message = response.statusText || message;
     }

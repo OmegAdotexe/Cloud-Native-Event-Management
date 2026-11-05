@@ -19,6 +19,7 @@ export default function AdminPage({ events, isLoading, error, onRefresh }) {
   
   const [dashboard, setDashboard] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
+  const [isCreating, setIsCreating] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState("");
@@ -29,10 +30,18 @@ export default function AdminPage({ events, isLoading, error, onRefresh }) {
   const selected = events.find((event) => event.id === selectedId);
 
   useEffect(() => {
-    if (location.state?.editEventId && events.length > 0) {
+    if (location.state?.create) {
+      setSelectedId(null);
+      setIsCreating(true);
+      setForm(initialForm);
+      setActionError("");
+      setActiveTab("DETAILS");
+      window.history.replaceState({}, document.title);
+    } else if (location.state?.editEventId && events.length > 0) {
       const ev = events.find(e => e.id === location.state.editEventId);
       if (ev) {
         setSelectedId(ev.id);
+        setIsCreating(false);
         setForm({ ...ev, startTime: toInputTime(ev.startTime), endTime: toInputTime(ev.endTime), registrationDeadline: toInputTime(ev.registrationDeadline) });
         if (location.state.tab) {
           setActiveTab(location.state.tab);
@@ -51,8 +60,18 @@ export default function AdminPage({ events, isLoading, error, onRefresh }) {
 
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
+  const openCreate = () => {
+    setSelectedId(null);
+    setIsCreating(true);
+    setForm(initialForm);
+    setActionError("");
+    setActiveTab("DETAILS");
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const edit = (event) => { 
     setSelectedId(event.id); 
+    setIsCreating(false);
     setActionError(""); 
     setForm({ ...event, startTime: toInputTime(event.startTime), endTime: toInputTime(event.endTime), registrationDeadline: toInputTime(event.registrationDeadline) }); 
     setActiveTab("DETAILS"); 
@@ -61,15 +80,79 @@ export default function AdminPage({ events, isLoading, error, onRefresh }) {
   
   const reset = () => { 
     setSelectedId(null); 
+    setIsCreating(false);
     setForm(initialForm); 
     setActionError(""); 
     setActiveTab("DETAILS"); 
   };
   
   const save = async (event) => {
-    event.preventDefault(); setSaving(true); setActionError("");
+    event.preventDefault(); 
+    setActionError("");
+
+    if (!form.title?.trim()) {
+      setActionError("Title is required.");
+      return;
+    }
+
+    if (!form.isVirtual && !form.venueName?.trim()) {
+      setActionError("Venue name is required for in-person events.");
+      return;
+    }
+
+    if (form.isVirtual && !form.virtualLink?.trim()) {
+      setActionError("Virtual link is required for virtual events.");
+      return;
+    }
+
+    if (!form.startTime || !form.endTime || !form.registrationDeadline) {
+      setActionError("Start time, end time, and registration deadline are all required.");
+      return;
+    }
+
+    const startTime = new Date(form.startTime);
+    const endTime = new Date(form.endTime);
+    const deadline = new Date(form.registrationDeadline);
+
+    if (isNaN(startTime.getTime()) || isNaN(endTime.getTime()) || isNaN(deadline.getTime())) {
+      setActionError("Please provide valid dates and times.");
+      return;
+    }
+
+    if (endTime <= startTime) {
+      setActionError("End time must be after start time.");
+      return;
+    }
+
+    if (deadline >= startTime) {
+      setActionError("Registration deadline must be before start time.");
+      return;
+    }
+
+    if (!form.capacity || Number(form.capacity) < 1) {
+      setActionError("Capacity must be at least 1.");
+      return;
+    }
+
+    setSaving(true);
     try { 
-      selected ? await relayApi.updateEvent(selected.id, form) : await relayApi.createEvent(form); 
+      const payload = {
+        title: form.title.trim(),
+        description: form.description || "",
+        venueName: form.isVirtual && !form.venueName?.trim() ? "Virtual / Online" : form.venueName.trim(),
+        isVirtual: Boolean(form.isVirtual),
+        virtualLink: form.virtualLink?.trim() || "",
+        startTime: form.startTime.length === 16 ? form.startTime + ":00" : form.startTime,
+        endTime: form.endTime.length === 16 ? form.endTime + ":00" : form.endTime,
+        registrationDeadline: form.registrationDeadline.length === 16 ? form.registrationDeadline + ":00" : form.registrationDeadline,
+        capacity: Number(form.capacity),
+        status: form.status || "DRAFT",
+        registrationMode: form.registrationMode || "OPEN",
+        category: form.category || "OTHER",
+        waitlistEnabled: Boolean(form.waitlistEnabled),
+      };
+
+      selected ? await relayApi.updateEvent(selected.id, payload) : await relayApi.createEvent(payload); 
       reset(); 
       await onRefresh(); 
     }
@@ -99,7 +182,7 @@ export default function AdminPage({ events, isLoading, error, onRefresh }) {
           <h1>Hi, {user?.name || "there"}</h1>
           <p>{isSuperAdmin ? "Manage all platform events." : "Manage your campus events and view analytics."}</p>
         </div>
-        <button className="relay-btn" onClick={reset} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+        <button className="relay-btn" onClick={openCreate} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
           <Plus size={16} /> Create event
         </button>
       </div>
@@ -141,7 +224,7 @@ export default function AdminPage({ events, isLoading, error, onRefresh }) {
         )}
 
         {/* Edit/Create Form Area */}
-        {(selectedId || (form !== initialForm)) && (
+        {(selectedId || isCreating) && (
           <div className="relay-card" style={{ marginBottom: "30px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div className="relay-feed-title">{selected ? `Editing: ${selected.title}` : "Create new event"}</div>
@@ -181,28 +264,63 @@ export default function AdminPage({ events, isLoading, error, onRefresh }) {
                   </div>
                   
                   <div>
-                    <label className="relay-field-label">Venue Name</label>
-                    <input className="relay-input" type="text" value={form.venueName} onChange={(e) => update('venueName', e.target.value)} required />
+                    <label className="relay-field-label">Venue Name {form.isVirtual && <span style={{ fontWeight: "normal", color: "var(--mute)" }}>(optional for virtual)</span>}</label>
+                    <input 
+                      className="relay-input" 
+                      type="text" 
+                      value={form.venueName} 
+                      onChange={(e) => update('venueName', e.target.value)} 
+                      placeholder={form.isVirtual ? "Virtual / Online" : "e.g. Auditorium Hall 1"}
+                      required={!form.isVirtual} 
+                    />
                   </div>
 
                   <div>
-                    <label className="relay-field-label">Virtual Link</label>
-                    <input className="relay-input" type="text" value={form.virtualLink || ""} onChange={(e) => update('virtualLink', e.target.value)} />
+                    <label className="relay-field-label">Virtual Link {form.isVirtual && <span style={{ color: "var(--coral)" }}>*</span>}</label>
+                    <input 
+                      className="relay-input" 
+                      type="text" 
+                      value={form.virtualLink || ""} 
+                      onChange={(e) => update('virtualLink', e.target.value)} 
+                      placeholder={form.isVirtual ? "e.g. https://meet.google.com/xyz" : "Optional unless event is virtual"}
+                      required={form.isVirtual}
+                    />
                   </div>
 
                   <div>
                     <label className="relay-field-label">Start time</label>
-                    <input className="relay-input" type="datetime-local" value={form.startTime} onChange={(e) => update('startTime', e.target.value)} required />
+                    <input 
+                      className="relay-input" 
+                      type="datetime-local" 
+                      value={form.startTime} 
+                      onChange={(e) => update('startTime', e.target.value)} 
+                      required 
+                    />
                   </div>
 
                   <div>
                     <label className="relay-field-label">End time</label>
-                    <input className="relay-input" type="datetime-local" value={form.endTime} onChange={(e) => update('endTime', e.target.value)} required />
+                    <input 
+                      className="relay-input" 
+                      type="datetime-local" 
+                      value={form.endTime} 
+                      onChange={(e) => update('endTime', e.target.value)} 
+                      required 
+                    />
                   </div>
 
                   <div>
                     <label className="relay-field-label">Registration Deadline</label>
-                    <input className="relay-input" type="datetime-local" value={form.registrationDeadline} onChange={(e) => update('registrationDeadline', e.target.value)} required />
+                    <input 
+                      className="relay-input" 
+                      type="datetime-local" 
+                      value={form.registrationDeadline} 
+                      onChange={(e) => update('registrationDeadline', e.target.value)} 
+                      required 
+                    />
+                    <small style={{ color: "var(--mute)", fontSize: "11px", display: "block", marginTop: "4px" }}>
+                      Must be strictly before event start time
+                    </small>
                   </div>
 
                   <div>
@@ -262,7 +380,7 @@ export default function AdminPage({ events, isLoading, error, onRefresh }) {
         )}
 
         {/* Event List Table */}
-        {!selectedId && (form === initialForm) && (
+        {!selectedId && !isCreating && (
           <div className="relay-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
               <div className="relay-feed-title" style={{ margin: 0 }}>My Events</div>

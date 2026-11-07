@@ -133,9 +133,9 @@ public class GoogleTokenVerifierService {
             return result;
         } catch (BadCredentialsException bce) {
             throw bce;
-        } catch (IllegalArgumentException iae) {
-            log.warn("Malformed Base64 structure in Google ID token: {}", iae.getMessage());
-            throw new BadCredentialsException("Malformed Google ID token format: " + iae.getMessage());
+        } catch (IllegalArgumentException | NullPointerException iae) {
+            log.warn("Malformed or missing claims in Google ID token: {}", iae.getMessage());
+            throw new BadCredentialsException("Malformed Google ID token claims: " + iae.getMessage());
         } catch (GeneralSecurityException | IOException ex) {
             log.error("Cryptographic verification error during Google token parsing: {}", ex.getMessage());
             throw new BadCredentialsException("Cryptographic verification of Google ID token failed: " + ex.getMessage());

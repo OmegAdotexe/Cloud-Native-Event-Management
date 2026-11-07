@@ -5,6 +5,7 @@ import com.campusconnect.user.model.User;
 import com.campusconnect.user.model.Role;
 import com.campusconnect.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
 
     private final UserRepository userRepository;
@@ -58,40 +60,74 @@ public class AuthService {
     @Transactional
     public AuthResponse authenticateWithGoogle(com.campusconnect.auth.dto.GoogleAuthRequest request) {
         GoogleTokenVerifierService.GoogleUserPayload payload = googleTokenVerifierService.verifyToken(request.getIdToken());
-        String email = payload.getEmail().toLowerCase().trim();
+        
+        if (!payload.isEmailVerified()) {
+            throw new org.springframework.security.authentication.BadCredentialsException("Google account email is not verified by Google. Authentication rejected.");
+        }
 
-        User user = userRepository.findByEmail(email).orElse(null);
+        String verifiedEmail = payload.getEmail().toLowerCase().trim();
+        String googleSub = payload.getSub();
+
+        if (googleSub == null || googleSub.isBlank()) {
+            throw new org.springframework.security.authentication.BadCredentialsException("Google token missing verified subject identifier.");
+        }
+
+        // 1. Primary lookup by stable external identifier (google_sub)
+        User user = userRepository.findByGoogleSub(googleSub).orElse(null);
 
         if (user == null) {
-            // New participant signup via Google Identity Services
-            user = User.builder()
-                    .name(payload.getName())
-                    .email(email)
-                    .password(passwordEncoder.encode(java.util.UUID.randomUUID().toString()))
-                    .role(Role.PARTICIPANT)
-                    .authProvider("GOOGLE")
-                    .status("APPROVED")
-                    .department(request.getDepartment() != null ? request.getDepartment().trim() : "General")
-                    .profileImageUrl(payload.getPicture())
-                    .isPlatformOperator(false)
-                    .build();
-            user = userRepository.save(user);
-        } else {
-            // Secure account association
-            if ("SUSPENDED".equalsIgnoreCase(user.getStatus()) || "REJECTED".equalsIgnoreCase(user.getStatus())) {
-                throw new org.springframework.security.access.AccessDeniedException("Account access is restricted. Status: " + user.getStatus());
-            }
-            if (user.getProfileImageUrl() == null && payload.getPicture() != null) {
-                user.setProfileImageUrl(payload.getPicture());
-            }
-            if (user.getAuthProvider() == null || "LOCAL".equals(user.getAuthProvider())) {
+            // 2. Secondary lookup by cryptographically verified email
+            user = userRepository.findByEmail(verifiedEmail).orElse(null);
+
+            if (user != null) {
+                // SECURITY AUDIT: Prevent account takeover of administrative accounts
+                if (user.getRole() == Role.EVENT_ADMIN || user.getRole() == Role.SUPER_ADMIN || Boolean.TRUE.equals(user.getIsPlatformOperator())) {
+                    log.warn("Blocked attempt to link administrative account {} via Google Sign-In", verifiedEmail);
+                    throw new org.springframework.security.access.AccessDeniedException(
+                            "Administrative and Organizer accounts cannot be accessed or linked via Google Sign-In. Please sign in using your designated administrative credentials."
+                    );
+                }
+
+                // Prevent duplicate identity associations: account already linked to a different Google sub
+                if (user.getGoogleSub() != null && !user.getGoogleSub().equals(googleSub)) {
+                    log.error("Identity conflict: Account {} already linked to google_sub {}, cannot link to {}", verifiedEmail, user.getGoogleSub(), googleSub);
+                    throw new org.springframework.security.authentication.BadCredentialsException("Account identity conflict: This account is already associated with a different Google account.");
+                }
+
+                // Safely link regular participant account
+                log.info("Linking participant account {} to Google sub {}", verifiedEmail, googleSub);
+                user.setGoogleSub(googleSub);
                 user.setAuthProvider("GOOGLE");
+                if (request.getDepartment() != null && (user.getDepartment() == null || user.getDepartment().isBlank())) {
+                    user.setDepartment(request.getDepartment().trim());
+                }
+            } else {
+                // 3. New participant self-registration via Google
+                user = User.builder()
+                        .name(payload.getName() != null && !payload.getName().isBlank() ? payload.getName() : verifiedEmail.split("@")[0])
+                        .email(verifiedEmail)
+                        .googleSub(googleSub)
+                        .password(passwordEncoder.encode(java.util.UUID.randomUUID().toString()))
+                        .role(Role.PARTICIPANT) // ALWAYS PARTICIPANT, NO ELEVATION
+                        .authProvider("GOOGLE")
+                        .status("APPROVED")
+                        .department(request.getDepartment() != null && !request.getDepartment().isBlank() ? request.getDepartment().trim() : "General")
+                        .profileImageUrl(payload.getPicture())
+                        .isPlatformOperator(false)
+                        .build();
             }
-            if (request.getDepartment() != null && user.getDepartment() == null) {
-                user.setDepartment(request.getDepartment().trim());
-            }
-            user = userRepository.save(user);
         }
+
+        // Check account status
+        if ("SUSPENDED".equalsIgnoreCase(user.getStatus()) || "REJECTED".equalsIgnoreCase(user.getStatus())) {
+            throw new org.springframework.security.access.AccessDeniedException("Account access is restricted. Status: " + user.getStatus());
+        }
+
+        if (user.getProfileImageUrl() == null && payload.getPicture() != null) {
+            user.setProfileImageUrl(payload.getPicture());
+        }
+
+        user = userRepository.save(user);
 
         String jwtToken = jwtService.generateToken(user);
 

@@ -48,11 +48,13 @@ public class RegistrationService {
 
         // Institutional eligibility validation
         if (Boolean.TRUE.equals(event.getInstitutionalOnly())) {
-            String email = participant.getEmail().toLowerCase();
+            String email = participant.getEmail().toLowerCase().trim();
+            String domainPart = email.contains("@") ? email.substring(email.indexOf("@") + 1) : "";
             boolean isEligible = Arrays.stream(institutionalDomainsConfig.split(","))
                     .map(String::trim)
                     .filter(s -> !s.isEmpty())
-                    .anyMatch(domain -> email.endsWith("@" + domain.toLowerCase()) || email.endsWith("." + domain.toLowerCase()));
+                    .map(String::toLowerCase)
+                    .anyMatch(domain -> domainPart.equals(domain) || domainPart.endsWith("." + domain));
             if (!isEligible) {
                 throw new AccessDeniedException("This event is exclusively restricted to verified @" + institutionalDomainsConfig + " university members.");
             }

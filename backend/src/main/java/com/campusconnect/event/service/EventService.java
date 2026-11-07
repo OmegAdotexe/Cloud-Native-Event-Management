@@ -25,23 +25,40 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import com.campusconnect.event.model.*;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class EventService {
     private final EventRepository eventRepository;
     private final EventChangeLogRepository eventChangeLogRepository;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
 
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
+
     @Transactional
     public EventResponse createEvent(CreateEventRequest request, User creator) {
         validateDates(request.getStartTime(), request.getEndTime());
         validateRegistrationDeadline(request.getRegistrationDeadline(), request.getStartTime());
         validateVirtualLink(request.isVirtual(), request.getVirtualLink());
+
+        // Concurrency Guard: Use PostgreSQL transaction-level advisory lock to serialize simultaneous duplicate attempts
+        String lockKey = creator.getId() + ":" + request.getTitle().trim().toLowerCase() + ":" 
+                + (request.getVenueName() != null ? request.getVenueName().trim().toLowerCase() : "") + ":" 
+                + (request.getStartTime() != null ? request.getStartTime().toString() : "");
+        try {
+            entityManager.createNativeQuery("SELECT pg_advisory_xact_lock(hashtext(?1))")
+                    .setParameter(1, lockKey)
+                    .getSingleResult();
+        } catch (Exception e) {
+            log.debug("Advisory lock bypassed (non-PostgreSQL or test environment): {}", e.getMessage());
+        }
 
         // Accidental duplicate prevention
         List<Event> duplicates = eventRepository.findDuplicates(

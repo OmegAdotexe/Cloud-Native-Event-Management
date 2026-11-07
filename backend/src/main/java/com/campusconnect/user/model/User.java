@@ -43,6 +43,9 @@ public class User implements UserDetails {
     @Column(name = "auth_provider", length = 50)
     private String authProvider = "LOCAL";
 
+    @Column(name = "google_sub", length = 100)
+    private String googleSub;
+
     @Builder.Default
     @Column(length = 50)
     private String status = "APPROVED";

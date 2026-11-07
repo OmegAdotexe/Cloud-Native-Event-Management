@@ -1,15 +1,19 @@
 package com.campusconnect.auth.service;
 
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
+import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
-import java.time.Instant;
-import java.util.Map;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.Collections;
 
 @Service
 @Slf4j
@@ -21,9 +25,13 @@ public class GoogleTokenVerifierService {
     @Value("${google.enabled:false}")
     private boolean googleAuthEnabled;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    @Value("${google.allow-mock:true}")
+    private boolean allowMockTokens;
 
-    private static final String GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo?id_token=";
+    @Value("${spring.profiles.active:dev}")
+    private String activeProfile;
+
+    private GoogleIdTokenVerifier verifier;
 
     @Data
     public static class GoogleUserPayload {
@@ -34,81 +42,103 @@ public class GoogleTokenVerifierService {
         private String sub;
     }
 
+    @PostConstruct
+    public void init() {
+        if (!"YOUR_GOOGLE_CLIENT_ID".equals(googleClientId) && googleClientId != null && !googleClientId.isBlank()) {
+            this.verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), GsonFactory.getDefaultInstance())
+                    .setAudience(Collections.singletonList(googleClientId))
+                    .build();
+            log.info("Initialized GoogleIdTokenVerifier with Client ID audience verification");
+        } else {
+            this.verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), GsonFactory.getDefaultInstance())
+                    .build();
+            log.info("Initialized GoogleIdTokenVerifier without audience restriction (awaiting production Client ID)");
+        }
+    }
+
     public GoogleUserPayload verifyToken(String idToken) {
         if (idToken == null || idToken.isBlank()) {
             throw new BadCredentialsException("Google ID token cannot be empty");
         }
 
-        // Support local mock/dev testing tokens when Google OAuth is in development
-        if (idToken.startsWith("mock-google-token-") || "YOUR_GOOGLE_CLIENT_ID".equals(googleClientId)) {
-            if (idToken.startsWith("mock-google-token-")) {
-                String email = idToken.replace("mock-google-token-", "").trim();
-                if (!email.contains("@")) {
-                    email = email + "@thapar.edu";
-                }
-                GoogleUserPayload mockPayload = new GoogleUserPayload();
-                mockPayload.setEmail(email.toLowerCase());
-                mockPayload.setEmailVerified(true);
-                mockPayload.setName("Google User (" + email.split("@")[0] + ")");
-                mockPayload.setPicture("https://ui-avatars.com/api/?name=" + email);
-                mockPayload.setSub("mock-sub-" + email.hashCode());
-                return mockPayload;
+        // 1. Mock token handling: strictly restricted to local development / test environments
+        if (idToken.startsWith("mock-google-token-")) {
+            boolean isDevOrTest = "dev".equalsIgnoreCase(activeProfile) || "test".equalsIgnoreCase(activeProfile);
+            if (!isDevOrTest || !allowMockTokens) {
+                log.error("SECURITY REJECTION: Attempt to use mock token in unauthorized profile: {} (allowMock: {})", activeProfile, allowMockTokens);
+                throw new BadCredentialsException("Mock authentication tokens are strictly prohibited in production.");
             }
+
+            String email = idToken.replace("mock-google-token-", "").trim();
+            if (!email.contains("@")) {
+                email = email + "@thapar.edu";
+            }
+
+            GoogleUserPayload mockPayload = new GoogleUserPayload();
+            mockPayload.setEmail(email.toLowerCase());
+            mockPayload.setEmailVerified(true);
+            mockPayload.setName("Developer User (" + email.split("@")[0] + ")");
+            mockPayload.setPicture("https://ui-avatars.com/api/?name=" + email);
+            mockPayload.setSub("mock-sub-" + Math.abs(email.hashCode()));
+            log.info("Mock token accepted for development testing: sub={}, email={}", mockPayload.getSub(), mockPayload.getEmail());
+            return mockPayload;
         }
 
+        // 2. Production gate: If genuine OAuth is disabled until HTTPS domain setup, reject gracefully
+        if (!googleAuthEnabled && "prod".equalsIgnoreCase(activeProfile)) {
+            log.warn("Production Google OAuth is currently disabled pending verified HTTPS domain configuration.");
+            throw new BadCredentialsException("Google Sign-In is disabled on HTTP public IP until a verified HTTPS domain is attached.");
+        }
+
+        // 3. Genuine Google ID Token Cryptographic Verification via Google's Public JWK Certs
         try {
-            ResponseEntity<Map> response = restTemplate.getForEntity(GOOGLE_TOKENINFO_URL + idToken, Map.class);
-            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                throw new BadCredentialsException("Invalid or rejected Google ID token");
+            GoogleIdToken googleIdToken = verifier.verify(idToken);
+            if (googleIdToken == null) {
+                log.warn("Cryptographic signature, audience, or timestamp verification failed for provided Google ID token");
+                throw new BadCredentialsException("Invalid or forged Google ID token signature");
             }
 
-            Map<String, Object> body = response.getBody();
+            GoogleIdToken.Payload payload = googleIdToken.getPayload();
 
-            // 1. Verify issuer
-            String iss = (String) body.get("iss");
-            if (!"accounts.google.com".equals(iss) && !"https://accounts.google.com".equals(iss)) {
-                throw new BadCredentialsException("Google token has invalid issuer: " + iss);
+            // Validate issuer (accounts.google.com or https://accounts.google.com)
+            String issuer = payload.getIssuer();
+            if (!"accounts.google.com".equals(issuer) && !"https://accounts.google.com".equals(issuer)) {
+                throw new BadCredentialsException("Google token has invalid issuer: " + issuer);
             }
 
-            // 2. Verify audience (if client id is configured)
-            String aud = (String) body.get("aud");
-            if (!"YOUR_GOOGLE_CLIENT_ID".equals(googleClientId) && !googleClientId.equals(aud)) {
-                throw new BadCredentialsException("Google token audience mismatch");
+            // Validate email verified claim
+            Boolean emailVerified = payload.getEmailVerified();
+            if (emailVerified == null || !emailVerified) {
+                throw new BadCredentialsException("Google account email is not verified by Google");
             }
 
-            // 3. Verify expiration
-            String expStr = String.valueOf(body.get("exp"));
-            long expSeconds = Long.parseLong(expStr);
-            if (Instant.now().getEpochSecond() > expSeconds) {
-                throw new BadCredentialsException("Google ID token is expired");
-            }
-
-            // 4. Verify email verification
-            Object emailVerifiedObj = body.get("email_verified");
-            boolean emailVerified = "true".equalsIgnoreCase(String.valueOf(emailVerifiedObj));
-            if (!emailVerified) {
-                throw new BadCredentialsException("Google account email is not verified");
-            }
-
-            String email = (String) body.get("email");
+            // Extract claims
+            String email = payload.getEmail();
             if (email == null || email.isBlank()) {
-                throw new BadCredentialsException("Google token missing email claim");
+                throw new BadCredentialsException("Google token missing verified email claim");
             }
 
-            GoogleUserPayload payload = new GoogleUserPayload();
-            payload.setEmail(email.toLowerCase().trim());
-            payload.setEmailVerified(true);
-            payload.setName((String) body.getOrDefault("name", email.split("@")[0]));
-            payload.setPicture((String) body.get("picture"));
-            payload.setSub((String) body.get("sub"));
+            String sub = payload.getSubject();
+            if (sub == null || sub.isBlank()) {
+                throw new BadCredentialsException("Google token missing subject (sub) claim");
+            }
 
-            return payload;
+            GoogleUserPayload result = new GoogleUserPayload();
+            result.setEmail(email.toLowerCase().trim());
+            result.setEmailVerified(true);
+            result.setName((String) payload.getOrDefault("name", email.split("@")[0]));
+            result.setPicture((String) payload.get("picture"));
+            result.setSub(sub);
+
+            return result;
         } catch (BadCredentialsException bce) {
             throw bce;
-        } catch (Exception ex) {
-            log.error("Google token verification failed: {}", ex.getMessage());
-            throw new BadCredentialsException("Failed to verify Google token with identity provider: " + ex.getMessage());
+        } catch (IllegalArgumentException iae) {
+            log.warn("Malformed Base64 structure in Google ID token: {}", iae.getMessage());
+            throw new BadCredentialsException("Malformed Google ID token format: " + iae.getMessage());
+        } catch (GeneralSecurityException | IOException ex) {
+            log.error("Cryptographic verification error during Google token parsing: {}", ex.getMessage());
+            throw new BadCredentialsException("Cryptographic verification of Google ID token failed: " + ex.getMessage());
         }
     }
 }
-

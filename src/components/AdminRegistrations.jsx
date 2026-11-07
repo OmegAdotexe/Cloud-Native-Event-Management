@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from "react";
 import * as relayApi from "../api/relayApi.js";
+import TicketModal from "./TicketModal.jsx";
+import TicketVerifierModal from "./TicketVerifierModal.jsx";
+import { QrCode, Search, ShieldCheck } from "lucide-react";
 
 export default function AdminRegistrations({ event }) {
   const [registrations, setRegistrations] = useState([]);
@@ -10,6 +13,9 @@ export default function AdminRegistrations({ event }) {
   const [statusFilter, setStatusFilter] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [inviteIds, setInviteIds] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [ticketModalReg, setTicketModalReg] = useState(null);
+  const [showVerifierModal, setShowVerifierModal] = useState(false);
 
   const fetchRegistrations = async () => {
     setLoading(true);
@@ -108,11 +114,22 @@ export default function AdminRegistrations({ event }) {
         </form>
       )}
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
-        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "10px" }}>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ position: "relative" }}>
+            <Search size={15} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--mute)" }} />
+            <input 
+              type="text" 
+              className="relay-input" 
+              style={{ width: "220px", paddingLeft: "32px" }}
+              placeholder="Filter by name or ID..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
           <select 
             className="relay-input" 
-            style={{ width: "200px" }}
+            style={{ width: "170px" }}
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
           >
@@ -139,6 +156,15 @@ export default function AdminRegistrations({ event }) {
           >
             Download CSV
           </button>
+          <button
+            className="relay-btn relay-btn-sm"
+            style={{ display: "inline-flex", alignItems: "center", gap: "5px", background: "var(--teal)" }}
+            onClick={() => setShowVerifierModal(true)}
+            title="Scan or enter ticket code to verify attendee entry"
+          >
+            <ShieldCheck size={14} />
+            Verify Pass
+          </button>
         </div>
         
         <div style={{ display: "flex", gap: "8px", alignItems: "center", fontSize: "12px", color: "var(--text-secondary)" }}>
@@ -156,7 +182,17 @@ export default function AdminRegistrations({ event }) {
         <div className="relay-empty">No registrations found.</div>
       ) : (
         <div style={{ border: "1px solid var(--border)", borderRadius: "12px", overflow: "hidden", background: "var(--surface)" }}>
-          {registrations.map((reg, index) => (
+          {registrations
+            .filter((reg) => {
+              if (!searchTerm.trim()) return true;
+              const term = searchTerm.toLowerCase();
+              return (
+                reg.participantName?.toLowerCase().includes(term) ||
+                String(reg.participantId).includes(term) ||
+                String(reg.id).includes(term)
+              );
+            })
+            .map((reg, index) => (
             <div key={reg.id} style={{ 
               padding: "14px 16px", 
               borderTop: index > 0 ? "1px solid var(--border-light)" : "none",
@@ -176,35 +212,60 @@ export default function AdminRegistrations({ event }) {
                 </div>
               </div>
               
-              {event.registrationMode === 'APPROVAL_REQUIRED' && reg.status === 'PENDING' && (
-                <div style={{ display: "flex", gap: "8px" }}>
-                  <button 
-                    className="relay-btn relay-btn-sm" 
-                    disabled={actionLoading}
-                    onClick={() => handleApprove(reg.id)}
-                    style={{ background: "var(--teal)" }}
-                  >Approve</button>
-                  <button 
-                    className="relay-btn-danger relay-btn-sm" 
-                    disabled={actionLoading}
-                    onClick={() => handleReject(reg.id)}
-                  >Reject</button>
-                </div>
-              )}
-              
-              {(reg.status === 'CONFIRMED' || reg.status === 'WAITLISTED') && (
-                <div style={{ display: "flex", gap: "8px" }}>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <button
+                  type="button"
+                  className="relay-btn-ghost relay-btn-sm"
+                  style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "4px 8px" }}
+                  onClick={() => setTicketModalReg(reg)}
+                  title="View digital pass & QR code"
+                >
+                  <QrCode size={14} />
+                  Pass
+                </button>
+
+                {event.registrationMode === 'APPROVAL_REQUIRED' && reg.status === 'PENDING' && (
+                  <>
+                    <button 
+                      className="relay-btn relay-btn-sm" 
+                      disabled={actionLoading}
+                      onClick={() => handleApprove(reg.id)}
+                      style={{ background: "var(--teal)" }}
+                    >Approve</button>
+                    <button 
+                      className="relay-btn-danger relay-btn-sm" 
+                      disabled={actionLoading}
+                      onClick={() => handleReject(reg.id)}
+                    >Reject</button>
+                  </>
+                )}
+                
+                {(reg.status === 'CONFIRMED' || reg.status === 'WAITLISTED') && (
                   <button 
                     className="relay-btn relay-btn-sm" 
                     disabled={actionLoading}
                     onClick={() => handleCancel(reg.id)}
                     style={{ background: "var(--amber)" }}
                   >Cancel</button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           ))}
         </div>
+      )}
+
+      {ticketModalReg && (
+        <TicketModal 
+          registration={ticketModalReg} 
+          onClose={() => setTicketModalReg(null)} 
+        />
+      )}
+
+      {showVerifierModal && (
+        <TicketVerifierModal
+          event={event}
+          onClose={() => setShowVerifierModal(false)}
+        />
       )}
     </div>
   );

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { CalendarClock, MapPin, ChevronRight } from "lucide-react";
+import { CalendarClock, MapPin, ChevronRight, QrCode } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext.jsx";
 import { useNavigate } from "react-router-dom";
 import * as relayApi from "../api/relayApi.js";
+import TicketModal from "../components/TicketModal.jsx";
 
 function getStatusStyle(status) {
   switch (status) {
@@ -22,6 +23,7 @@ export default function MyRegistrationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState(null);
 
   const fetchRegistrations = async () => {
     setIsLoading(true);
@@ -118,7 +120,19 @@ export default function MyRegistrationsPage() {
                 </div>
 
                 {['PENDING', 'CONFIRMED', 'WAITLISTED'].includes(reg.status) && reg.eventStatus === 'PUBLISHED' && (
-                  <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+                  <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 12, display: "flex", gap: "10px", alignItems: "center" }}>
+                    {reg.status === 'CONFIRMED' && (
+                      <button 
+                        className="relay-btn"
+                        style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedTicket(reg);
+                        }}
+                      >
+                        <QrCode size={14} /> View Digital Pass
+                      </button>
+                    )}
                     <button 
                       className="relay-btn-danger" 
                       disabled={actionLoading} 
@@ -134,5 +148,11 @@ export default function MyRegistrationsPage() {
         </div>
       </div>
     </div>
+    {selectedTicket && (
+      <TicketModal 
+        registration={selectedTicket} 
+        onClose={() => setSelectedTicket(null)} 
+      />
+    )}
   </>;
 }

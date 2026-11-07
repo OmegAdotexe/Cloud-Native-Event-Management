@@ -1,126 +1,91 @@
-# Relay / CampusConnect
+# Event Management Platform (Relay / CampusConnect)
 
-**Relay** (CampusConnect) is a full-stack event operations platform for campuses and organizations. It provides event creation and publishing, schedule and timeline management, capacity enforcement with automatic waitlist promotion, real-time analytics, and asynchronous notification delivery.
-
----
-
-## Architecture Overview
-
-* **Frontend**: React 18 SPA built with Vite, React Router, Recharts, and Lucide Icons (`src/`).
-* **Backend**: Spring Boot 3.x modular monolith with Spring Security, Spring Data JPA, and Spring AMQP (`backend/`).
-* **Database**: PostgreSQL 15+ (`backend/docker-compose.yml`).
-* **Message Broker**: RabbitMQ 3.x for asynchronous notification dispatch.
-* **Email Testing**: MailHog local SMTP server and web inbox.
+Full-stack, cloud-native event operations platform for campuses and organizations.
 
 ---
 
-## Prerequisites
+## 🌐 Quick Access Links (Local Development)
 
-Ensure you have the following installed on your local machine:
-* **Node.js** 18+ and **npm** 9+
-* **Java** 21+ (JDK 21 or higher)
-* **Apache Maven** 3.9+ (or use IDE-bundled Maven)
-* **Docker & Docker Compose** (Docker Desktop on Windows/macOS, or Docker engine on Linux)
-
----
-
-## Quick Start (Run Locally)
-
-### 1. Configure Environment Variables
-Copy `.env.example` to `.env` in the repository root:
-```bash
-cp .env.example .env
-```
-*(The provided `.env.example` already contains development-ready secrets and database settings).*
-
----
-
-### 2. Start the Infrastructure (Docker)
-In a terminal, navigate to the `backend` folder and start PostgreSQL, RabbitMQ, and MailHog:
-```bash
-cd backend
-docker compose up -d
-```
-*(Verify services are running with `docker compose ps`)*
-
----
-
-### 3. Start the Backend API
-From the `backend` directory, run the Spring Boot application with the `dev` profile to automatically seed demo user accounts:
-
-```bash
-mvn -Dspring-boot.run.profiles=dev spring-boot:run
-```
-
-Once started, the backend API will be available at **`http://localhost:8080`**.
-
----
-
-### 4. Start the Frontend
-Open a new terminal window in the project root directory (`SEproject/`):
-
-```bash
-# Install frontend dependencies (first time only)
-npm install
-
-# Start the Vite development server
-npm run dev
-```
-
-Open your browser and navigate to **`http://localhost:5173`**.
-
----
-
-## Pre-seeded Demo Accounts
-
-When the backend starts with `-Dspring-boot.run.profiles=dev`, the following demo accounts are created:
-
-| Role | Email | Password | Access & Capabilities |
-|---|---|---|---|
-| **Super Admin** | `superadmin@example.com` | `password` | Full platform overview, cross-organizer management, reassign events, global metrics |
-| **Event Admin** | `admin@example.com` | `password` | Create events, publish drafts, manage registrations, manage timelines, view analytics |
-| **Participant** | `participant@example.com` | `password` | Browse published events, register, join waitlists, manage personal registrations |
-
----
-
-## Ports and Dashboards
-
-| Service | URL / Port | Credentials / Purpose |
+| Application | URL | Description |
 |---|---|---|
-| **Frontend Web App** | `http://localhost:5173` | Main user interface |
-| **Backend REST API** | `http://localhost:8080` | REST API |
-| **Actuator Health Check**| `http://localhost:8080/actuator/health` | Server health and metrics |
-| **PostgreSQL Database**| `localhost:5432` | DB: `campusconnect`, User: `postgres`, Pass: `postgres` |
-| **RabbitMQ Management** | `http://localhost:15672` | User: `guest`, Pass: `guest` |
-| **MailHog Web Inbox** | `http://localhost:8025` | View outgoing email notifications |
+| **Frontend Web App** | [http://localhost:5173](http://localhost:5173) | Main user interface (React 18 + Vite) |
+| **Backend REST API** | [http://localhost:8080](http://localhost:8080) | REST API endpoints (`/api/...`) |
+| **Swagger UI / OpenAPI Docs** | [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html) | Interactive API documentation & JWT test console |
+| **OpenAPI Spec (JSON)** | [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs) | Machine-readable API schema |
+| **Actuator Health** | [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health) | Subsystem health check (`db`, `rabbit`, `mail`, `disk`, `ping`) |
+| **MailHog Web Inbox** | [http://localhost:8025](http://localhost:8025) | View sent notification emails |
+| **RabbitMQ Management** | [http://localhost:15672](http://localhost:15672) | Message broker console (`guest` / `guest`) |
 
 ---
 
-## Useful Development Commands
+## 🔑 Demo Accounts
 
-### Frontend
+All accounts use the password: **`password`**
+
+| Role | Email | Password | Access Capabilities |
+|---|---|---|---|
+| **Super Admin** | `superadmin@example.com` | `password` | Global metrics, platform-wide oversight, user management, reassign events |
+| **Event Admin** | `admin@example.com` | `password` | Create events, manage registrations, verify gate passes, update timelines |
+| **Participant** | `participant@example.com` | `password` | Browse events with category filters, register, view printable QR passes |
+
+---
+
+## 🎫 Key Features
+
+### 1. Digital Passes & QR Code Admission Control
+- **Participant Pass (`TicketModal.jsx`)**: When registered, attendees can view and print an official admission pass featuring dynamic QR code generation.
+- **Venue Gate Verifier (`TicketVerifierModal.jsx`)**: Organizers can verify attendee passes at the door by code (e.g. `CC-2026-E1-R1`) or scanned URL to confirm legitimacy, prevent duplicate entries, and block unapproved attendees.
+
+### 2. Category Filtering & Search
+- Participants can instantly filter events by categories (`WORKSHOP`, `SEMINAR`, `SPORTS`, `CULTURAL`, `OTHER`) and search by keyword in real time.
+
+### 3. Asynchronous Notifications & Message Broker
+- Event actions (registrations, cancellations, timeline updates) publish AMQP messages to RabbitMQ.
+- Email workers process the queue asynchronously and deliver styled HTML emails to MailHog.
+
+### 4. Interactive OpenAPI 3.0 (Swagger UI)
+- Fully interactive API explorer with JWT Bearer authentication support at `/swagger-ui/index.html`.
+
+---
+
+## 🚀 How to Start and Stop Locally
+
+From the root `EMS` directory, run:
+- **`start.bat`**: Starts PostgreSQL & MailHog containers, launches the Spring Boot backend server, and starts the Vite frontend dev server.
+- **`stop.bat`**: Shuts down the Docker containers and terminates background dev servers cleanly.
+- **`start-dev.ps1`**: PowerShell alternative with automated Java 25 detection and health checks.
+
+---
+
+## 🐳 Production Container Deployment
+
+To build and run the entire platform (Frontend + Backend + PostgreSQL + RabbitMQ + MailHog) as unified containers:
+
 ```bash
-npm run dev       # Start Vite dev server with Hot Module Replacement (HMR)
-npm run build     # Build production bundle to dist/
-npm run preview   # Preview production build locally
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-### Backend
+Access the production frontend at `http://localhost` (port 80).
+
+---
+
+## 🧪 Automated Testing
+
+The backend includes a comprehensive integration and unit test suite:
+
 ```bash
 cd backend
-mvn clean compile                        # Compile all Java sources
-mvn test                                 # Run test suite
-mvn -Dspring-boot.run.profiles=dev spring-boot:run  # Run app with demo accounts
-docker compose down                      # Stop infrastructure containers
-docker compose down -v                   # Stop infrastructure and wipe database volume
+mvn test
 ```
+
+- **39 / 39 automated tests passing** (0 failures, 0 errors, 0 skipped).
 
 ---
 
-## Common Troubleshooting
+## 📐 Architecture & Technology Stack
 
-* **Port 5432 or 5672 in use**: If you already have local PostgreSQL or RabbitMQ services running on your machine, stop them before running `docker compose up -d`.
-* **PowerShell Execution Policy Error on Windows**: If `npm run dev` produces a `.ps1 cannot be loaded` security error, use `npm.cmd run dev` or adjust your PowerShell execution policy (`Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`).
-* **VS Code / Eclipse Lombok Compilation Issues**: If you experience bytecode discrepancies in VS Code, open the Command Palette (`Ctrl + Shift + P`), run **`Java: Clean Java Language Server Workspace`**, and restart the IDE.
-* **Vite Proxy**: The frontend development server automatically proxies all `/api` requests to `http://localhost:8080` via `vite.config.js`. Ensure the backend is started before making API requests from the frontend.
-
+- **Frontend**: React 18, Vite, React Router, Recharts, Lucide Icons (`src/`)
+- **Backend**: Spring Boot 3.3.4, Java 25 LTS, Spring Security + JWT, Spring Data JPA, Springdoc OpenAPI (`backend/`)
+- **Database**: PostgreSQL 15 (`campusconnect-postgres` Docker container on port `5433`)
+- **Message Broker**: RabbitMQ 4.4.0 on port `5672`
+- **Email Server**: MailHog on port `1025` (SMTP) & `8025` (Web UI)

@@ -3,11 +3,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   CalendarClock, MapPin, Clock, Users, ArrowLeft,
   Code2, Music, Trophy, BookOpen, Star, Globe, Link2,
-  AlertCircle, CheckCircle2, XCircle, Info, Calendar
+  AlertCircle, CheckCircle2, XCircle, Info, Calendar, QrCode
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext.jsx";
 import * as relayApi from "../api/relayApi.js";
 import TimelineDisplay from "../components/TimelineDisplay.jsx";
+import TicketModal from "../components/TicketModal.jsx";
 
 const CATEGORY_CONFIG = {
   WORKSHOP: { icon: <Code2 size={20} />, bg: "#EBF0FE", color: "#4A7BF7", label: "Workshop" },
@@ -67,6 +68,7 @@ export default function EventDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [showTicketModal, setShowTicketModal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -213,6 +215,17 @@ export default function EventDetailPage() {
                     }}>
                       {getStatusStyle(registration.status).label}
                     </span>
+                  )}
+                  {registration && registration.status === 'CONFIRMED' && (
+                    <button
+                      type="button"
+                      className="relay-btn-ghost"
+                      style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                      onClick={() => setShowTicketModal(true)}
+                    >
+                      <QrCode size={15} />
+                      View Pass
+                    </button>
                   )}
                   {canRegister && (
                     <button className="relay-btn" disabled={actionLoading} onClick={handleRegister}>
@@ -410,6 +423,20 @@ export default function EventDetailPage() {
           </div>
         </div>
       </div>
+
+      {showTicketModal && registration && (
+        <TicketModal
+          registration={{
+            ...registration,
+            eventTitle: event.title,
+            eventVenue: event.isVirtual ? event.virtualLink : event.venueName,
+            eventStartTime: event.startTime,
+            participantName: user?.name,
+            participantEmail: user?.email,
+          }}
+          onClose={() => setShowTicketModal(false)}
+        />
+      )}
     </>
   );
 }

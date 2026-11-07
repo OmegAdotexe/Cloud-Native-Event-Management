@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: cc-prod-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-campusconnect}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      - prod-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - campusconnect-network
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: cc-prod-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "15672:15672" # Management UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - campusconnect-network
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: cc-prod-mailhog
+    restart: unless-stopped
+    ports:
+      - "8025:8025" # Web UI
+    networks:
+      - campusconnect-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cc-prod-backend
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8080
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-campusconnect}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      MAIL_HOST: mailhog
+      MAIL_PORT: 1025
+      EMAIL_ENABLED: "true"
+      JWT_SECRET: ${JWT_SECRET:-RYuPADGXp6U3uf5t4rr_qzZlIY1-yETCfAW0VQb___4}
+      JWT_EXPIRATION_MS: 86400000
+      SPRING_PROFILES_ACTIVE: dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - campusconnect-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cc-prod-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - campusconnect-network
+
+volumes:
+  prod-postgres-data:
+
+networks:
+  campusconnect-network:
+    driver: bridge

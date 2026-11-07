@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { CalendarClock, MapPin, Calendar, Users, Clock, ChevronRight, Code2, Music, Trophy, BookOpen, Star } from "lucide-react";
+import { CalendarClock, MapPin, Calendar, Users, Clock, ChevronRight, Code2, Music, Trophy, BookOpen, Star, Search } from "lucide-react";
 import * as relayApi from "../api/relayApi.js";
 import { useNavigate } from "react-router-dom";
 
@@ -48,6 +48,8 @@ export default function ParticipantEventsPage({ events, isLoading, error }) {
   const navigate = useNavigate();
   const [registrations, setRegistrations] = useState([]);
   const [actionLoading, setActionLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("ALL");
 
   const fetchRegistrations = async () => {
     try {
@@ -86,8 +88,17 @@ export default function ParticipantEventsPage({ events, isLoading, error }) {
     }
   };
 
-  // Sort events so upcoming is first
-  const sortedEvents = [...events].sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+  // Filter and sort events
+  const filteredEvents = events.filter((event) => {
+    const matchesCategory = selectedCategory === "ALL" || event.category === selectedCategory;
+    const matchesSearch = !searchQuery.trim() || 
+      event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (event.venueName && event.venueName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesCategory && matchesSearch;
+  });
+
+  const sortedEvents = [...filteredEvents].sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
 
   return (
     <>
@@ -99,6 +110,42 @@ export default function ParticipantEventsPage({ events, isLoading, error }) {
       </div>
       <div className="relay-body">
         <div style={{ maxWidth: "840px" }}>
+          {/* Search & Category Filter */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
+            <div className="relay-search" style={{ width: "100%", background: "#fff", border: "1px solid var(--border)" }}>
+              <Search size={16} />
+              <input 
+                type="text" 
+                placeholder="Search events by title, venue, or description..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              {["ALL", "WORKSHOP", "SEMINAR", "SPORTS", "CULTURAL", "OTHER"].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: "20px",
+                    border: "1px solid",
+                    borderColor: selectedCategory === cat ? "var(--teal)" : "var(--border)",
+                    backgroundColor: selectedCategory === cat ? "var(--teal)" : "#ffffff",
+                    color: selectedCategory === cat ? "#ffffff" : "var(--text)",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.15s ease"
+                  }}
+                >
+                  {cat === "ALL" ? "All Events" : (CATEGORY_CONFIG[cat]?.label || cat)}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="relay-card">
             {isLoading && <div className="relay-empty">Loading events...</div>}
             {error && <div className="relay-empty" style={{ color: "var(--coral)" }}>{error}</div>}

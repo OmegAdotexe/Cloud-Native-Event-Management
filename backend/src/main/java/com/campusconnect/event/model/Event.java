@@ -59,6 +59,10 @@ public class Event {
     @Builder.Default
     private Boolean waitlistEnabled = false;
 
+    @Builder.Default
+    @Column(name = "institutional_only")
+    private Boolean institutionalOnly = false;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "created_by_id", nullable = false)
     private User createdBy;

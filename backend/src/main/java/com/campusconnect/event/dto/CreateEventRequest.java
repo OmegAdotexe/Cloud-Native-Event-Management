@@ -40,4 +40,6 @@ public class CreateEventRequest {
     private EventCategory category = EventCategory.OTHER;
     @Builder.Default
     private boolean waitlistEnabled = false;
+    @Builder.Default
+    private boolean institutionalOnly = false;
 }

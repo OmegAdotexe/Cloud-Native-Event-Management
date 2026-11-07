@@ -39,4 +39,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     @Query("SELECT e.category, COUNT(e) FROM Event e WHERE e.status = :status GROUP BY e.category")
     List<Object[]> countEventsByStatusGroupByCategory(@Param("status") EventStatus status);
+
+    @Query("SELECT e FROM Event e WHERE e.createdBy = :user AND LOWER(TRIM(e.title)) = LOWER(TRIM(:title)) AND LOWER(TRIM(e.venueName)) = LOWER(TRIM(:venueName)) AND e.startTime = :startTime AND e.status != 'CANCELLED'")
+    List<Event> findDuplicates(@Param("user") User user, @Param("title") String title, @Param("venueName") String venueName, @Param("startTime") java.time.LocalDateTime startTime);
 }

@@ -77,6 +77,23 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const loginWithGoogle = async (googleAuthData) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await relayApi.loginWithGoogle(googleAuthData);
+      sessionStorage.setItem("relay_auth_token", data.token);
+      setToken(data.token);
+      setUser(data);
+      return data;
+    } catch (err) {
+      setError(err.message || "Google authentication failed");
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = async () => {
     setIsLoading(true);
     try {
@@ -93,7 +110,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, role: user?.role, isLoading, error, login, register, logout, setError }}>
+    <AuthContext.Provider value={{ user, token, role: user?.role, isLoading, error, login, register, loginWithGoogle, logout, setError }}>
       {children}
     </AuthContext.Provider>
   );

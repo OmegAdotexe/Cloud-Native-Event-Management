@@ -30,6 +30,9 @@ public class RegistrationService {
     private final EventInviteRepository eventInviteRepository;
     private final ApplicationEventPublisher eventPublisher;
 
+    @org.springframework.beans.factory.annotation.Value("${app.institutional-domains:thapar.edu}")
+    private String institutionalDomainsConfig;
+
     @Transactional
     public RegistrationResponse registerForEvent(Long eventId, User participant) {
         Event event = eventRepository.findByIdForUpdate(eventId)
@@ -41,6 +44,18 @@ public class RegistrationService {
 
         if (event.getRegistrationDeadline() != null && LocalDateTime.now().isAfter(event.getRegistrationDeadline())) {
             throw new IllegalStateException("Registration deadline has passed");
+        }
+
+        // Institutional eligibility validation
+        if (Boolean.TRUE.equals(event.getInstitutionalOnly())) {
+            String email = participant.getEmail().toLowerCase();
+            boolean isEligible = Arrays.stream(institutionalDomainsConfig.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .anyMatch(domain -> email.endsWith("@" + domain.toLowerCase()) || email.endsWith("." + domain.toLowerCase()));
+            if (!isEligible) {
+                throw new AccessDeniedException("This event is exclusively restricted to verified @" + institutionalDomainsConfig + " university members.");
+            }
         }
 
         registrationRepository.findByEventAndParticipant(event, participant)

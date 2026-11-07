@@ -172,6 +172,16 @@ export async function login(credentials) {
 }
 
 /**
+ * POST /api/auth/google
+ */
+export async function loginWithGoogle(data) {
+  return authFetch("/api/auth/google", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+/**
  * POST /api/auth/register
  */
 export async function register(userData) {

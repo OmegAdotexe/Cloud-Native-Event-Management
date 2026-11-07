@@ -42,6 +42,15 @@ public class EventService {
         validateDates(request.getStartTime(), request.getEndTime());
         validateRegistrationDeadline(request.getRegistrationDeadline(), request.getStartTime());
         validateVirtualLink(request.isVirtual(), request.getVirtualLink());
+
+        // Accidental duplicate prevention
+        List<Event> duplicates = eventRepository.findDuplicates(
+                creator, request.getTitle(), request.getVenueName(), request.getStartTime());
+        if (!duplicates.isEmpty()) {
+            Event existing = duplicates.get(0);
+            throw new IllegalStateException("An identical active event with this title, venue, and start time already exists (Event ID: " + existing.getId() + "). If this is a separate session, please update the title or schedule.");
+        }
+
         Event event = Event.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
@@ -56,6 +65,7 @@ public class EventService {
                 .registrationMode(request.getRegistrationMode() == null ? RegistrationMode.OPEN : request.getRegistrationMode())
                 .category(request.getCategory() == null ? EventCategory.OTHER : request.getCategory())
                 .waitlistEnabled(request.isWaitlistEnabled())
+                .institutionalOnly(request.isInstitutionalOnly())
                 .createdBy(creator)
                 .build();
         return toResponse(eventRepository.save(event));
@@ -145,6 +155,7 @@ public class EventService {
         if (request.getRegistrationMode() != null) event.setRegistrationMode(request.getRegistrationMode());
         if (request.getCategory() != null) event.setCategory(request.getCategory());
         if (request.getWaitlistEnabled() != null) event.setWaitlistEnabled(request.getWaitlistEnabled());
+        if (request.getInstitutionalOnly() != null) event.setInstitutionalOnly(request.getInstitutionalOnly());
         validateDates(event.getStartTime(), event.getEndTime());
         validateRegistrationDeadline(event.getRegistrationDeadline(), event.getStartTime());
         validateVirtualLink(event.getIsVirtual(), event.getVirtualLink());
@@ -290,6 +301,7 @@ public class EventService {
                 .registrationMode(event.getRegistrationMode())
                 .category(event.getCategory())
                 .waitlistEnabled(event.getWaitlistEnabled())
+                .institutionalOnly(Boolean.TRUE.equals(event.getInstitutionalOnly()))
                 .cancelledReason(event.getCancelledReason())
                 .cancelledAt(event.getCancelledAt())
                 .createdByName(event.getCreatedBy().getName())

@@ -44,16 +44,21 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                    "/actuator/**", 
+                    "/actuator/health",
+                    "/actuator/info",
                     "/health", 
                     "/api/auth/login", 
                     "/api/auth/register",
+                    "/api/auth/google",
                     "/api/events/public",
-                    "/api/events/categories/stats",
+                    "/api/events/categories/stats"
+                ).permitAll()
+                .requestMatchers(
+                    "/actuator/**",
                     "/swagger-ui/**",
                     "/swagger-ui.html",
                     "/v3/api-docs/**"
-                ).permitAll()
+                ).authenticated()
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())

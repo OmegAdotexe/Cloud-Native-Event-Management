@@ -46,16 +46,22 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info
   endpoint:
     health:
-      show-details: always
+      show-details: when_authorized
 
 jwt:
   secret: ${JWT_SECRET}
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
+google:
+  client-id: ${GOOGLE_CLIENT_ID:YOUR_GOOGLE_CLIENT_ID}
+  client-secret: ${GOOGLE_CLIENT_SECRET:YOUR_GOOGLE_CLIENT_SECRET}
+  enabled: ${GOOGLE_AUTH_ENABLED:false}
+
 app:
+  institutional-domains: ${INSTITUTIONAL_DOMAINS:thapar.edu}
   email:
     enabled: ${EMAIL_ENABLED:true}
     from: ${EMAIL_FROM:noreply@campusconnect.dev}

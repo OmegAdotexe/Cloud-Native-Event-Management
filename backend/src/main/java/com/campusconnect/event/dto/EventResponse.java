@@ -21,6 +21,7 @@ public class EventResponse {
     private RegistrationMode registrationMode;
     private EventCategory category;
     private boolean waitlistEnabled;
+    private boolean institutionalOnly;
     private String cancelledReason;
     private LocalDateTime cancelledAt;
     private String createdByName;
@@ -33,8 +34,8 @@ public class EventResponse {
                          String virtualLink, LocalDateTime startTime, LocalDateTime endTime,
                          LocalDateTime registrationDeadline, Integer capacity, EventStatus status,
                          RegistrationMode registrationMode, EventCategory category, boolean waitlistEnabled,
-                         String cancelledReason, LocalDateTime cancelledAt, String createdByName,
-                         LocalDateTime createdAt, LocalDateTime updatedAt) {
+                         boolean institutionalOnly, String cancelledReason, LocalDateTime cancelledAt,
+                         String createdByName, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.title = title;
         this.description = description;
@@ -49,6 +50,7 @@ public class EventResponse {
         this.registrationMode = registrationMode;
         this.category = category;
         this.waitlistEnabled = waitlistEnabled;
+        this.institutionalOnly = institutionalOnly;
         this.cancelledReason = cancelledReason;
         this.cancelledAt = cancelledAt;
         this.createdByName = createdByName;
@@ -104,6 +106,10 @@ public class EventResponse {
     public boolean getWaitlistEnabled() { return waitlistEnabled; }
     public void setWaitlistEnabled(boolean waitlistEnabled) { this.waitlistEnabled = waitlistEnabled; }
 
+    public boolean isInstitutionalOnly() { return institutionalOnly; }
+    public boolean getInstitutionalOnly() { return institutionalOnly; }
+    public void setInstitutionalOnly(boolean institutionalOnly) { this.institutionalOnly = institutionalOnly; }
+
     public String getCancelledReason() { return cancelledReason; }
     public void setCancelledReason(String cancelledReason) { this.cancelledReason = cancelledReason; }
 
@@ -134,6 +140,7 @@ public class EventResponse {
         private RegistrationMode registrationMode;
         private EventCategory category;
         private boolean waitlistEnabled;
+        private boolean institutionalOnly;
         private String cancelledReason;
         private LocalDateTime cancelledAt;
         private String createdByName;
@@ -156,6 +163,7 @@ public class EventResponse {
         public EventResponseBuilder registrationMode(RegistrationMode registrationMode) { this.registrationMode = registrationMode; return this; }
         public EventResponseBuilder category(EventCategory category) { this.category = category; return this; }
         public EventResponseBuilder waitlistEnabled(boolean waitlistEnabled) { this.waitlistEnabled = waitlistEnabled; return this; }
+        public EventResponseBuilder institutionalOnly(boolean institutionalOnly) { this.institutionalOnly = institutionalOnly; return this; }
         public EventResponseBuilder cancelledReason(String cancelledReason) { this.cancelledReason = cancelledReason; return this; }
         public EventResponseBuilder cancelledAt(LocalDateTime cancelledAt) { this.cancelledAt = cancelledAt; return this; }
         public EventResponseBuilder createdByName(String createdByName) { this.createdByName = createdByName; return this; }
@@ -164,8 +172,8 @@ public class EventResponse {
 
         public EventResponse build() {
             return new EventResponse(id, title, description, venueName, isVirtual, virtualLink, startTime, endTime,
-                    registrationDeadline, capacity, status, registrationMode, category, waitlistEnabled, cancelledReason,
-                    cancelledAt, createdByName, createdAt, updatedAt);
+                    registrationDeadline, capacity, status, registrationMode, category, waitlistEnabled, institutionalOnly,
+                    cancelledReason, cancelledAt, createdByName, createdAt, updatedAt);
         }
     }
 }

@@ -27,4 +27,5 @@ public class UpdateEventRequest {
     private RegistrationMode registrationMode;
     private EventCategory category;
     private Boolean waitlistEnabled;
+    private Boolean institutionalOnly;
 }

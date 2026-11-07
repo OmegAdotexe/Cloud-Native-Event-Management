@@ -28,6 +28,11 @@ public class AuthController {
         return ResponseEntity.ok(authService.authenticate(request));
     }
 
+    @PostMapping("/google")
+    public ResponseEntity<AuthResponse> loginWithGoogle(@Valid @RequestBody com.campusconnect.auth.dto.GoogleAuthRequest request) {
+        return ResponseEntity.ok(authService.authenticateWithGoogle(request));
+    }
+
     @GetMapping("/me")
     public ResponseEntity<UserDto> getCurrentUser(@AuthenticationPrincipal User user) {
         if (user == null) {

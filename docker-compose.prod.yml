@@ -27,7 +27,7 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
     ports:
-      - "15672:15672" # Management UI
+      - "127.0.0.1:15672:15672" # Management UI restricted to localhost
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
       interval: 10s
@@ -41,7 +41,7 @@ services:
     container_name: cc-prod-mailhog
     restart: unless-stopped
     ports:
-      - "8025:8025" # Web UI
+      - "127.0.0.1:8025:8025" # Web UI restricted to localhost
     networks:
       - campusconnect-network
 
@@ -68,6 +68,9 @@ services:
       JWT_SECRET: ${JWT_SECRET:-RYuPADGXp6U3uf5t4rr_qzZlIY1-yETCfAW0VQb___4}
       JWT_EXPIRATION_MS: 86400000
       SPRING_PROFILES_ACTIVE: dev
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-YOUR_GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-YOUR_GOOGLE_CLIENT_SECRET}
+      INSTITUTIONAL_DOMAINS: ${INSTITUTIONAL_DOMAINS:-thapar.edu}
     depends_on:
       postgres:
         condition: service_healthy

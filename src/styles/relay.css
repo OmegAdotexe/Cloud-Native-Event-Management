@@ -2371,3 +2371,94 @@ body {
   gap: 20px;
 }
 
+/* ── Three-Dot Action Menu & Duplicate Badges ─────────────── */
+.cc-action-menu-container {
+  position: relative;
+  display: inline-block;
+}
+
+.cc-action-menu-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.15s ease;
+}
+
+.cc-action-menu-btn:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.cc-action-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  z-index: 50;
+  min-width: 170px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cc-action-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.cc-action-dropdown-item:hover {
+  background: var(--bg);
+  color: var(--primary);
+}
+
+.cc-duplicate-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--amber-light);
+  color: var(--amber);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: all 0.15s ease;
+}
+
+.cc-duplicate-pill:hover {
+  background: rgba(245, 158, 11, 0.2);
+}
+
+.cc-duplicate-subrow {
+  background: rgba(108, 59, 238, 0.02);
+  border-left: 3px solid var(--primary);
+}
+
+

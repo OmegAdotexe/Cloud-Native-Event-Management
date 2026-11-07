@@ -5,7 +5,7 @@ import * as relayApi from "../api/relayApi.js";
 import { 
   Calendar, CheckCircle2, Users, Clock, Edit, FileText, Search, Plus,
   BarChart2, Eye, MapPin, Globe, Sparkles, AlertCircle, ShieldCheck,
-  LayoutGrid, List, Filter, RotateCcw
+  LayoutGrid, List, Filter, RotateCcw, MoreVertical, ChevronDown, ChevronRight, Copy, Layers
 } from "lucide-react";
 import AdminRegistrations from "../components/AdminRegistrations.jsx";
 import AdminTimeline from "../components/AdminTimeline.jsx";
@@ -57,6 +57,8 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
   const [sortBy, setSortBy] = useState("DATE_ASC");
   const [viewMode, setViewMode] = useState("LIST");
   const [activeTab, setActiveTab] = useState("DETAILS");
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const [expandedDuplicates, setExpandedDuplicates] = useState({});
   
   const selected = events.find((event) => event.id === selectedId);
 
@@ -330,8 +332,41 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
     return 0;
   });
 
+  const normalizeKey = (e) => {
+    const t = (e.title || "").trim().toLowerCase();
+    const v = (e.venueName || "").trim().toLowerCase();
+    const s = e.startTime ? e.startTime.slice(0, 16) : "";
+    const o = (e.organizerClub || e.createdByName || "").trim().toLowerCase();
+    return `${t}__${v}__${s}__${o}`;
+  };
+
+  const groupedEvents = React.useMemo(() => {
+    const map = new Map();
+    filteredEvents.forEach(e => {
+      const k = normalizeKey(e);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k).push(e);
+    });
+    return Array.from(map.entries()).map(([key, items]) => ({
+      key,
+      primary: items[0],
+      items,
+      count: items.length,
+      hasDuplicates: items.length > 1
+    }));
+  }, [filteredEvents]);
+
+  const toggleDuplicateExpand = (key) => {
+    setExpandedDuplicates(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const toggleActionMenu = (id, e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    setOpenMenuId(prev => (prev === id ? null : id));
+  };
+
   return (
-    <>
+    <div onClick={() => setOpenMenuId(null)}>
       <div className="relay-topbar">
         <div>
           <h1 style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -944,86 +979,181 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredEvents.map(event => {
+                    {groupedEvents.map(group => {
+                      const event = group.primary;
                       const cover = getEventCoverImage(event);
+                      const isExpanded = Boolean(expandedDuplicates[group.key]);
+
                       return (
-                        <tr key={event.id} style={{ borderBottom: "1px solid var(--border-light)" }}>
-                          <td style={{ padding: "12px 10px" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                              <img
-                                src={cover}
-                                alt={event.title}
-                                onError={handleImageError}
-                                style={{ width: "48px", height: "48px", borderRadius: "10px", objectFit: "cover", flexShrink: 0 }}
-                              />
-                              <div>
-                                <div style={{ fontWeight: 600, color: "var(--text)" }}>{event.title}</div>
-                                <div style={{ fontSize: "11.5px", color: "var(--mute)" }}>
-                                  {event.organizerClub || event.createdByName || "Campus Organizer"}
+                        <React.Fragment key={group.key}>
+                          <tr style={{ borderBottom: "1px solid var(--border-light)" }}>
+                            <td style={{ padding: "10px 10px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                                <img
+                                  src={cover}
+                                  alt={event.title}
+                                  onError={handleImageError}
+                                  style={{ width: "42px", height: "42px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }}
+                                />
+                                <div>
+                                  <div style={{ fontWeight: 600, color: "var(--text)" }}>{event.title}</div>
+                                  <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", marginTop: "2px" }}>
+                                    <span style={{ fontSize: "11px", color: "var(--mute)" }}>
+                                      ID: #{event.id} • {event.organizerClub || event.createdByName || "Campus Organizer"}
+                                    </span>
+                                    {event.institutionalOnly && (
+                                      <span style={{ background: "rgba(108,59,238,0.1)", color: "var(--primary)", padding: "1px 5px", borderRadius: "4px", fontSize: "10px", fontWeight: 700 }}>
+                                        Thapar Exclusive
+                                      </span>
+                                    )}
+                                    {group.hasDuplicates && (
+                                      <button
+                                        type="button"
+                                        className="cc-duplicate-pill"
+                                        onClick={(e) => { e.stopPropagation(); toggleDuplicateExpand(group.key); }}
+                                        title="Click to view identical session records in database"
+                                      >
+                                        <Copy size={10} /> {group.count} Identical Records {isExpanded ? "▲" : "▼"}
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </td>
-                          <td style={{ padding: "12px 10px", color: "var(--text-secondary)", fontSize: "12px" }}>
-                            {event.category}
-                          </td>
-                          <td style={{ padding: "12px 10px" }}>
-                            <span style={{ 
-                              padding: "2px 8px", borderRadius: "8px", fontSize: "11px", fontWeight: 500,
-                              background: event.registrationMode === "APPROVAL_REQUIRED" ? "var(--amber-light)" : "var(--bg)",
-                              color: event.registrationMode === "APPROVAL_REQUIRED" ? "var(--amber)" : "var(--mute)",
-                              border: "1px solid var(--border)"
-                            }}>
-                              {event.registrationMode === "APPROVAL_REQUIRED" ? "Approval Req." : event.registrationMode || "Open"}
-                            </span>
-                          </td>
-                          <td style={{ padding: "12px 10px" }}>
-                            <span style={{ 
-                              padding: "3px 10px", borderRadius: "12px", fontSize: "11px", fontWeight: 600,
-                              background: event.status === "PUBLISHED" ? "var(--teal-light)" : event.status === "CANCELLED" ? "var(--coral-light)" : "var(--primary-light)",
-                              color: event.status === "PUBLISHED" ? "var(--teal)" : event.status === "CANCELLED" ? "var(--coral)" : "var(--primary)"
-                            }}>
-                              {event.status}
-                            </span>
-                          </td>
-                          <td style={{ padding: "12px 10px", color: "var(--text-secondary)", fontSize: "12px" }}>
-                            <div>{new Date(event.startTime).toLocaleDateString()}</div>
-                            <div style={{ color: "var(--mute)", fontSize: "11px" }}>
-                              {event.isVirtual ? "Virtual Event" : event.venueName}
-                            </div>
-                          </td>
-                          <td style={{ padding: "12px 10px", color: "var(--text-secondary)", fontSize: "12px" }}>
-                            {event.capacity} seats
-                          </td>
-                          <td style={{ padding: "12px 10px", textAlign: "right" }}>
-                            <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", alignItems: "center" }}>
-                              <button
-                                type="button"
-                                className="relay-btn-ghost relay-btn-sm"
-                                onClick={() => navigate(`/event/${event.id}`)}
-                                title="View public event page"
-                              >
-                                <Eye size={13} /> View
-                              </button>
-                              <button
-                                type="button"
-                                className="relay-btn-ghost relay-btn-sm"
-                                onClick={() => edit(event)}
-                                title="Edit event settings"
-                              >
-                                <Edit size={13} /> Edit
-                              </button>
-                              <button
-                                type="button"
-                                className="relay-btn-ghost relay-btn-sm"
-                                onClick={() => navigate(`/admin/events/${event.id}/analytics`)}
-                                title="View event metrics"
-                              >
-                                <BarChart2 size={13} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
+                            </td>
+                            <td style={{ padding: "10px 10px", color: "var(--text-secondary)", fontSize: "12px" }}>
+                              {event.category}
+                            </td>
+                            <td style={{ padding: "10px 10px" }}>
+                              <span style={{ 
+                                padding: "2px 7px", borderRadius: "6px", fontSize: "11px", fontWeight: 500,
+                                background: event.registrationMode === "APPROVAL_REQUIRED" ? "var(--amber-light)" : "var(--bg)",
+                                color: event.registrationMode === "APPROVAL_REQUIRED" ? "var(--amber)" : "var(--mute)",
+                                border: "1px solid var(--border)"
+                              }}>
+                                {event.registrationMode === "APPROVAL_REQUIRED" ? "Approval Req." : event.registrationMode || "Open"}
+                              </span>
+                            </td>
+                            <td style={{ padding: "10px 10px" }}>
+                              <span style={{ 
+                                padding: "2px 8px", borderRadius: "10px", fontSize: "11px", fontWeight: 600,
+                                background: event.status === "PUBLISHED" ? "var(--teal-light)" : event.status === "CANCELLED" ? "var(--coral-light)" : "var(--primary-light)",
+                                color: event.status === "PUBLISHED" ? "var(--teal)" : event.status === "CANCELLED" ? "var(--coral)" : "var(--primary)"
+                              }}>
+                                {event.status}
+                              </span>
+                            </td>
+                            <td style={{ padding: "10px 10px", color: "var(--text-secondary)", fontSize: "12px" }}>
+                              <div>{new Date(event.startTime).toLocaleDateString()}</div>
+                              <div style={{ color: "var(--mute)", fontSize: "11px" }}>
+                                {event.isVirtual ? "Virtual Event" : event.venueName}
+                              </div>
+                            </td>
+                            <td style={{ padding: "10px 10px", color: "var(--text-secondary)", fontSize: "12px" }}>
+                              {event.capacity} seats
+                            </td>
+                            <td style={{ padding: "10px 10px", textAlign: "right" }}>
+                              <div className="cc-action-menu-container">
+                                <button
+                                  type="button"
+                                  className="cc-action-menu-btn"
+                                  onClick={(e) => toggleActionMenu(event.id, e)}
+                                  title="Actions"
+                                >
+                                  <MoreVertical size={15} />
+                                </button>
+                                {openMenuId === event.id && (
+                                  <div className="cc-action-dropdown">
+                                    <button
+                                      type="button"
+                                      className="cc-action-dropdown-item"
+                                      onClick={() => { setOpenMenuId(null); navigate(`/event/${event.id}`); }}
+                                    >
+                                      <Eye size={13} style={{ color: "var(--teal)" }} /> View Public Page
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="cc-action-dropdown-item"
+                                      onClick={() => { setOpenMenuId(null); edit(event); }}
+                                    >
+                                      <Edit size={13} style={{ color: "var(--primary)" }} /> Edit Settings
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="cc-action-dropdown-item"
+                                      onClick={() => { setOpenMenuId(null); navigate(`/admin/events/${event.id}/analytics`); }}
+                                    >
+                                      <BarChart2 size={13} style={{ color: "var(--amber)" }} /> Analytics
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+
+                          {/* Expanded sub-rows showing every identical database record with its unique ID */}
+                          {isExpanded && group.items.slice(1).map(dup => (
+                            <tr key={dup.id} className="cc-duplicate-subrow" style={{ borderBottom: "1px solid var(--border-light)" }}>
+                              <td style={{ padding: "8px 10px 8px 32px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px" }}>
+                                  <span style={{ color: "var(--primary)", fontWeight: 700 }}>↳ Session ID #{dup.id}:</span>
+                                  <span style={{ color: "var(--mute)", fontSize: "11px" }}>
+                                    Created {new Date(dup.createdAt).toLocaleString()}
+                                  </span>
+                                </div>
+                              </td>
+                              <td style={{ padding: "8px 10px", color: "var(--mute)", fontSize: "11.5px" }}>{dup.category}</td>
+                              <td style={{ padding: "8px 10px", color: "var(--mute)", fontSize: "11.5px" }}>{dup.registrationMode}</td>
+                              <td style={{ padding: "8px 10px" }}>
+                                <span style={{ 
+                                  padding: "1px 6px", borderRadius: "8px", fontSize: "10.5px", fontWeight: 600,
+                                  background: dup.status === "PUBLISHED" ? "var(--teal-light)" : "var(--primary-light)",
+                                  color: dup.status === "PUBLISHED" ? "var(--teal)" : "var(--primary)"
+                                }}>
+                                  {dup.status}
+                                </span>
+                              </td>
+                              <td style={{ padding: "8px 10px", color: "var(--mute)", fontSize: "11.5px" }}>{new Date(dup.startTime).toLocaleDateString()}</td>
+                              <td style={{ padding: "8px 10px", color: "var(--mute)", fontSize: "11.5px" }}>{dup.capacity} seats</td>
+                              <td style={{ padding: "8px 10px", textAlign: "right" }}>
+                                <div className="cc-action-menu-container">
+                                  <button
+                                    type="button"
+                                    className="cc-action-menu-btn"
+                                    onClick={(e) => toggleActionMenu(dup.id, e)}
+                                    title="Actions for this session"
+                                  >
+                                    <MoreVertical size={14} />
+                                  </button>
+                                  {openMenuId === dup.id && (
+                                    <div className="cc-action-dropdown">
+                                      <button
+                                        type="button"
+                                        className="cc-action-dropdown-item"
+                                        onClick={() => { setOpenMenuId(null); navigate(`/event/${dup.id}`); }}
+                                      >
+                                        <Eye size={13} style={{ color: "var(--teal)" }} /> View Public Page
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="cc-action-dropdown-item"
+                                        onClick={() => { setOpenMenuId(null); edit(dup); }}
+                                      >
+                                        <Edit size={13} style={{ color: "var(--primary)" }} /> Edit Settings
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="cc-action-dropdown-item"
+                                        onClick={() => { setOpenMenuId(null); navigate(`/admin/events/${dup.id}/analytics`); }}
+                                      >
+                                        <BarChart2 size={13} style={{ color: "var(--amber)" }} /> Analytics
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
                       );
                     })}
                   </tbody>
@@ -1034,11 +1164,14 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
             {/* Grid View Cards */}
             {!isLoading && !error && filteredEvents.length > 0 && viewMode === "GRID" && (
               <div className="cc-directory-grid">
-                {filteredEvents.map(event => {
+                {groupedEvents.map(group => {
+                  const event = group.primary;
                   const cover = getEventCoverImage(event);
+                  const isExpanded = Boolean(expandedDuplicates[group.key]);
+
                   return (
                     <div 
-                      key={event.id}
+                      key={group.key}
                       style={{ 
                         background: "var(--surface)", 
                         border: "1px solid var(--border)", 
@@ -1049,16 +1182,24 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                         transition: "transform .2s ease, box-shadow .2s ease",
                       }}
                     >
-                      <div style={{ position: "relative", height: "150px", width: "100%", background: "#17152B" }}>
+                      <div style={{ position: "relative", height: "140px", width: "100%", background: "#17152B" }}>
                         <img 
                           src={cover} 
                           alt={event.title} 
                           onError={handleImageError}
                           style={{ width: "100%", height: "100%", objectFit: "cover" }} 
                         />
-                        <div style={{ position: "absolute", top: "10px", right: "10px" }}>
+                        <div style={{ position: "absolute", top: "10px", right: "10px", display: "flex", gap: "6px" }}>
+                          {group.hasDuplicates && (
+                            <span style={{ 
+                              padding: "2px 8px", borderRadius: "10px", fontSize: "10.5px", fontWeight: 700,
+                              background: "rgba(245, 158, 11, 0.9)", color: "#fff"
+                            }}>
+                              {group.count} Sessions
+                            </span>
+                          )}
                           <span style={{ 
-                            padding: "3px 10px", borderRadius: "12px", fontSize: "11px", fontWeight: 700,
+                            padding: "2px 8px", borderRadius: "10px", fontSize: "10.5px", fontWeight: 700,
                             background: event.status === "PUBLISHED" ? "var(--teal)" : event.status === "CANCELLED" ? "var(--coral)" : "var(--primary)",
                             color: "#fff"
                           }}>
@@ -1076,14 +1217,47 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                       </div>
 
                       <div style={{ padding: "14px", display: "flex", flexDirection: "column", flexGrow: 1 }}>
-                        <div style={{ fontWeight: 700, fontSize: "14.5px", color: "var(--text)", marginBottom: "6px" }}>
+                        <div style={{ fontWeight: 700, fontSize: "14.5px", color: "var(--text)", marginBottom: "4px" }}>
                           {event.title}
                         </div>
-                        <div style={{ fontSize: "12px", color: "var(--mute)", marginBottom: "12px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <div style={{ fontSize: "11px", color: "var(--mute)", marginBottom: "8px" }}>
+                          ID #{event.id} • {event.organizerClub || event.createdByName || "Campus Organizer"}
+                        </div>
+                        <div style={{ fontSize: "12px", color: "var(--mute)", marginBottom: "12px", display: "flex", flexDirection: "column", gap: "3px" }}>
                           <div>📅 {new Date(event.startTime).toLocaleDateString()}</div>
                           <div>📍 {event.isVirtual ? "Virtual Event" : event.venueName}</div>
                           <div>👥 Capacity: {event.capacity} seats</div>
                         </div>
+
+                        {group.hasDuplicates && (
+                          <div style={{ marginBottom: "10px" }}>
+                            <button
+                              type="button"
+                              className="cc-duplicate-pill"
+                              style={{ width: "100%", justifyContent: "center" }}
+                              onClick={() => toggleDuplicateExpand(group.key)}
+                            >
+                              <Copy size={11} /> {group.count} Identical Records (IDs: #{group.items.map(i => i.id).join(', #')}) {isExpanded ? "▲" : "▼"}
+                            </button>
+                            {isExpanded && (
+                              <div style={{ marginTop: "6px", padding: "8px", background: "var(--bg)", borderRadius: "8px", fontSize: "11px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                                {group.items.map(i => (
+                                  <div key={i.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <span>ID #{i.id} ({i.status})</span>
+                                    <button
+                                      type="button"
+                                      className="relay-btn-ghost relay-btn-sm"
+                                      style={{ fontSize: "10px", padding: "1px 5px" }}
+                                      onClick={() => edit(i)}
+                                    >
+                                      Edit
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         <div style={{ marginTop: "auto", paddingTop: "10px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <span style={{ 
@@ -1093,31 +1267,40 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                             {event.registrationMode === "APPROVAL_REQUIRED" ? "Approval Req." : "Open"}
                           </span>
 
-                          <div style={{ display: "flex", gap: "6px" }}>
+                          <div className="cc-action-menu-container">
                             <button
                               type="button"
-                              className="relay-btn-ghost relay-btn-sm"
-                              onClick={() => navigate(`/event/${event.id}`)}
-                              title="Public Event Page"
+                              className="cc-action-menu-btn"
+                              onClick={(e) => toggleActionMenu(event.id, e)}
+                              title="Actions"
                             >
-                              <Eye size={13} />
+                              <MoreVertical size={15} />
                             </button>
-                            <button
-                              type="button"
-                              className="relay-btn-ghost relay-btn-sm"
-                              onClick={() => edit(event)}
-                              title="Edit Event"
-                            >
-                              <Edit size={13} />
-                            </button>
-                            <button
-                              type="button"
-                              className="relay-btn-ghost relay-btn-sm"
-                              onClick={() => navigate(`/admin/events/${event.id}/analytics`)}
-                              title="Analytics"
-                            >
-                              <BarChart2 size={13} />
-                            </button>
+                            {openMenuId === event.id && (
+                              <div className="cc-action-dropdown">
+                                <button
+                                  type="button"
+                                  className="cc-action-dropdown-item"
+                                  onClick={() => { setOpenMenuId(null); navigate(`/event/${event.id}`); }}
+                                >
+                                  <Eye size={13} style={{ color: "var(--teal)" }} /> View Public Page
+                                </button>
+                                <button
+                                  type="button"
+                                  className="cc-action-dropdown-item"
+                                  onClick={() => { setOpenMenuId(null); edit(event); }}
+                                >
+                                  <Edit size={13} style={{ color: "var(--primary)" }} /> Edit Settings
+                                </button>
+                                <button
+                                  type="button"
+                                  className="cc-action-dropdown-item"
+                                  onClick={() => { setOpenMenuId(null); navigate(`/admin/events/${event.id}/analytics`); }}
+                                >
+                                  <BarChart2 size={13} style={{ color: "var(--amber)" }} /> Analytics
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1129,6 +1312,6 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }

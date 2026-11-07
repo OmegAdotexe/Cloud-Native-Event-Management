@@ -19,6 +19,7 @@ import NotificationsPage from "./pages/NotificationsPage.jsx";
 import SuperAdminPage from "./pages/SuperAdminPage.jsx";
 import SuperAdminEventsPage from "./pages/SuperAdminEventsPage.jsx";
 import AdminDashboardPage from "./pages/AdminDashboardPage.jsx";
+import AdminManagementPage from "./pages/AdminManagementPage.jsx";
 import ParticipantEventsPage from "./pages/ParticipantEventsPage.jsx";
 import EventDetailPage from "./pages/EventDetailPage.jsx";
 import EventAnalyticsPage from "./pages/EventAnalyticsPage.jsx";
@@ -312,6 +313,9 @@ function MainApp() {
           </>} />
           {(role === "EVENT_ADMIN" || role === "SUPER_ADMIN") && (
             <Route path="/admin/events/:eventId/analytics" element={<EventAnalyticsPage />} />
+          )}
+          {role === "SUPER_ADMIN" && (
+            <Route path="/admin-management" element={<AdminManagementPage />} />
           )}
           {role === "PARTICIPANT" && <Route path="/my-registrations" element={<MyRegistrationsPage />} />}
           <Route path="/event/:eventId" element={<EventDetailPage />} />

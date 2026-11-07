@@ -187,6 +187,10 @@ public class NotificationProducer {
                 });
     }
 
+    public void sendDirectNotification(Long recipientId, Long eventId, NotificationType type, String title, String message, NotificationChannel channel) {
+        sendNotification(recipientId, eventId, type, title, message, channel);
+    }
+
     private void sendNotification(Long recipientId, Long eventId, NotificationType type, String title, String message, NotificationChannel channel) {
         NotificationMessage msg = NotificationMessage.builder()
                 .messageId(UUID.randomUUID().toString())

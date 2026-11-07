@@ -42,4 +42,5 @@ public class CreateEventRequest {
     private boolean waitlistEnabled = false;
     @Builder.Default
     private boolean institutionalOnly = false;
+    private String coverImageUrl;
 }

@@ -83,6 +83,7 @@ public class EventService {
                 .category(request.getCategory() == null ? EventCategory.OTHER : request.getCategory())
                 .waitlistEnabled(request.isWaitlistEnabled())
                 .institutionalOnly(request.isInstitutionalOnly())
+                .coverImageUrl(request.getCoverImageUrl())
                 .createdBy(creator)
                 .build();
         return toResponse(eventRepository.save(event));
@@ -173,6 +174,7 @@ public class EventService {
         if (request.getCategory() != null) event.setCategory(request.getCategory());
         if (request.getWaitlistEnabled() != null) event.setWaitlistEnabled(request.getWaitlistEnabled());
         if (request.getInstitutionalOnly() != null) event.setInstitutionalOnly(request.getInstitutionalOnly());
+        if (request.getCoverImageUrl() != null) event.setCoverImageUrl(request.getCoverImageUrl());
         validateDates(event.getStartTime(), event.getEndTime());
         validateRegistrationDeadline(event.getRegistrationDeadline(), event.getStartTime());
         validateVirtualLink(event.getIsVirtual(), event.getVirtualLink());
@@ -319,6 +321,7 @@ public class EventService {
                 .category(event.getCategory())
                 .waitlistEnabled(event.getWaitlistEnabled())
                 .institutionalOnly(Boolean.TRUE.equals(event.getInstitutionalOnly()))
+                .coverImageUrl(event.getCoverImageUrl())
                 .cancelledReason(event.getCancelledReason())
                 .cancelledAt(event.getCancelledAt())
                 .createdByName(event.getCreatedBy().getName())

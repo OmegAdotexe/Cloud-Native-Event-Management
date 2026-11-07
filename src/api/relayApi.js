@@ -280,3 +280,64 @@ export async function inviteParticipants(eventId, participantIds) {
     body: JSON.stringify({ participantIds }),
   });
 }
+
+// ---------------------------------------------------------------------------
+// Phase 3: Admin Applications & Approvals
+// ---------------------------------------------------------------------------
+
+export async function applyForAdmin(data) {
+  return authFetch("/api/admin-applications/apply", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getMyAdminApplicationStatus() {
+  return authFetch("/api/admin-applications/status");
+}
+
+export async function getAdminApplications(status, search, page = 0, size = 15) {
+  const params = new URLSearchParams({ page, size });
+  if (status && status !== "ALL") params.append("status", status);
+  if (search && search.trim()) params.append("search", search.trim());
+  return authFetch(`/api/admin-applications?${params.toString()}`);
+}
+
+export async function getAdminApplicationStats() {
+  return authFetch("/api/admin-applications/stats");
+}
+
+export async function getAdminApplicationById(id) {
+  return authFetch(`/api/admin-applications/${id}`);
+}
+
+export async function getAdminApplicationAudits(id) {
+  return authFetch(`/api/admin-applications/${id}/audits`);
+}
+
+export async function approveAdminApplication(id) {
+  return authFetch(`/api/admin-applications/${id}/approve`, {
+    method: "POST",
+  });
+}
+
+export async function rejectAdminApplication(id, reason) {
+  return authFetch(`/api/admin-applications/${id}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function revokeAdminPrivileges(id, reason) {
+  return authFetch(`/api/admin-applications/${id}/revoke`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function suspendAdmin(id, reason) {
+  return authFetch(`/api/admin-applications/${id}/suspend`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}

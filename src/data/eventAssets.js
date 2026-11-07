@@ -7,9 +7,9 @@
  */
 
 export const CURATED_EVENT_IMAGES = {
-  // Campus & Atmosphere
+  // Campus & Atmosphere (all verified 200 OK)
   CAMPUS_HERO: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1600&q=80",
-  CAMPUS_QUAD: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1200&q=80",
+  CAMPUS_QUAD: "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1200&q=80",
   CAMPUS_LIBRARY: "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=1200&q=80",
   CAMPUS_STUDENTS: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80",
 
@@ -35,7 +35,7 @@ export const CURATED_EVENT_IMAGES = {
   // Sports & Athletics
   SPORTS_ARENA: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1000&q=80",
   BASKETBALL: "https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1000&q=80",
-  FOOTBALL_FIELD: "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1000&q=80",
+  FOOTBALL_FIELD: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1000&q=80",
   ATHLETICS_TRACK: "https://images.unsplash.com/photo-1530549387789-4c1017266635?auto=format&fit=crop&w=1000&q=80",
 };
 
@@ -72,14 +72,55 @@ export const CATEGORY_IMAGE_COLLECTIONS = {
 };
 
 /**
- * Returns a high-res cover image for an event.
- * Checks for user uploaded images in local storage, keywords in title/description,
- * or falls back to category defaults.
+ * Generates a clean, standalone SVG Data-URI fallback with category gradient and initial letter.
+ * Zero network dependencies — guaranteed to always render.
  */
-export function getEventCoverImage(event) {
-  if (!event) return CURATED_EVENT_IMAGES.CAMPUS_QUAD;
+export function getSvgPlaceholder(title = "Campus Event", category = "EVENT") {
+  const cat = (category || "EVENT").toUpperCase();
+  const gradients = {
+    WORKSHOP: ["#6C3BEE", "#3B82F6"],
+    SEMINAR: ["#4F46E5", "#06B6D4"],
+    CULTURAL: ["#EC4899", "#8B5CF6"],
+    SPORTS: ["#10B981", "#3B82F6"],
+    OTHER: ["#6366F1", "#A855F7"],
+  };
+  const [c1, c2] = gradients[cat] || gradients.OTHER;
+  const initial = (title && typeof title === "string" && title.trim().length > 0)
+    ? title.trim()[0].toUpperCase()
+    : "C";
 
-  // 1. Check local image registry (for uploaded event posters)
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240" width="100%" height="100%">
+    <defs>
+      <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="${c1}"/>
+        <stop offset="100%" stop-color="${c2}"/>
+      </linearGradient>
+    </defs>
+    <rect width="400" height="240" fill="url(#g)"/>
+    <circle cx="200" cy="95" r="42" fill="rgba(255,255,255,0.2)"/>
+    <text x="200" y="108" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="34" font-weight="700" fill="#ffffff" text-anchor="middle">${initial}</text>
+    <text x="200" y="165" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="600" fill="rgba(255,255,255,0.92)" text-anchor="middle" letter-spacing="1">${cat}</text>
+  </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+/**
+ * Returns a high-res cover image for an event.
+ * Supports both getEventCoverImage(eventObject) and getEventCoverImage(id, category, title).
+ */
+export function getEventCoverImage(eventOrId, maybeCategory, maybeTitle) {
+  // Normalize input
+  let event = eventOrId;
+  if (!eventOrId || typeof eventOrId !== "object") {
+    event = { id: eventOrId, category: maybeCategory, title: maybeTitle };
+  }
+
+  // 1. Direct cover/poster URL if present in event object
+  if (event.coverImageUrl || event.posterUrl || event.coverImage || event.imageUrl) {
+    return event.coverImageUrl || event.posterUrl || event.coverImage || event.imageUrl;
+  }
+
+  // 2. Check local image registry (for uploaded event posters)
   try {
     const customRegistry = JSON.parse(localStorage.getItem("campusconnect_custom_images") || "{}");
     if (event.id && customRegistry[event.id]?.poster) {
@@ -90,11 +131,6 @@ export function getEventCoverImage(event) {
     }
   } catch (e) {
     // ignore
-  }
-
-  // 2. Direct cover/poster URL if present in event object
-  if (event.posterUrl || event.coverImage || event.imageUrl) {
-    return event.posterUrl || event.coverImage || event.imageUrl;
   }
 
   // 3. Keyword matching in title
@@ -118,8 +154,10 @@ export function getEventCoverImage(event) {
   // 4. Category-based fallback with deterministic pick using ID or title length
   const category = (event.category || "OTHER").toUpperCase();
   const pool = CATEGORY_IMAGE_COLLECTIONS[category] || CATEGORY_IMAGE_COLLECTIONS.OTHER;
-  const index = Math.abs((event.id ? Number(event.id) : (event.title || "").length) % pool.length);
-  return pool[index];
+  const numId = Number(event.id);
+  const seed = (!isNaN(numId) && numId > 0) ? numId : (event.title || "").length;
+  const index = Math.abs(seed % pool.length);
+  return pool[index] || CURATED_EVENT_IMAGES.CAMPUS_QUAD;
 }
 
 /**
@@ -143,11 +181,12 @@ export function getEventGalleryImages(event) {
 }
 
 /**
- * Reliable fallback handler for img tags
+ * Reliable fallback handler for img tags.
+ * Falls back to an inline SVG Data-URI if any image fails to load.
  */
-export const handleImageError = (e, fallbackUrl = CURATED_EVENT_IMAGES.CAMPUS_QUAD) => {
-  if (e.target.src !== fallbackUrl) {
-    e.target.src = fallbackUrl;
+export const handleImageError = (e, fallbackUrl = null) => {
+  const fallback = fallbackUrl || getSvgPlaceholder();
+  if (e.target && e.target.src !== fallback) {
+    e.target.src = fallback;
   }
 };
-

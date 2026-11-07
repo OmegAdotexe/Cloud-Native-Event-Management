@@ -22,6 +22,7 @@ public class EventResponse {
     private EventCategory category;
     private boolean waitlistEnabled;
     private boolean institutionalOnly;
+    private String coverImageUrl;
     private String cancelledReason;
     private LocalDateTime cancelledAt;
     private String createdByName;
@@ -34,7 +35,7 @@ public class EventResponse {
                          String virtualLink, LocalDateTime startTime, LocalDateTime endTime,
                          LocalDateTime registrationDeadline, Integer capacity, EventStatus status,
                          RegistrationMode registrationMode, EventCategory category, boolean waitlistEnabled,
-                         boolean institutionalOnly, String cancelledReason, LocalDateTime cancelledAt,
+                         boolean institutionalOnly, String coverImageUrl, String cancelledReason, LocalDateTime cancelledAt,
                          String createdByName, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.title = title;
@@ -51,6 +52,7 @@ public class EventResponse {
         this.category = category;
         this.waitlistEnabled = waitlistEnabled;
         this.institutionalOnly = institutionalOnly;
+        this.coverImageUrl = coverImageUrl;
         this.cancelledReason = cancelledReason;
         this.cancelledAt = cancelledAt;
         this.createdByName = createdByName;
@@ -110,6 +112,9 @@ public class EventResponse {
     public boolean getInstitutionalOnly() { return institutionalOnly; }
     public void setInstitutionalOnly(boolean institutionalOnly) { this.institutionalOnly = institutionalOnly; }
 
+    public String getCoverImageUrl() { return coverImageUrl; }
+    public void setCoverImageUrl(String coverImageUrl) { this.coverImageUrl = coverImageUrl; }
+
     public String getCancelledReason() { return cancelledReason; }
     public void setCancelledReason(String cancelledReason) { this.cancelledReason = cancelledReason; }
 
@@ -141,6 +146,7 @@ public class EventResponse {
         private EventCategory category;
         private boolean waitlistEnabled;
         private boolean institutionalOnly;
+        private String coverImageUrl;
         private String cancelledReason;
         private LocalDateTime cancelledAt;
         private String createdByName;
@@ -164,6 +170,7 @@ public class EventResponse {
         public EventResponseBuilder category(EventCategory category) { this.category = category; return this; }
         public EventResponseBuilder waitlistEnabled(boolean waitlistEnabled) { this.waitlistEnabled = waitlistEnabled; return this; }
         public EventResponseBuilder institutionalOnly(boolean institutionalOnly) { this.institutionalOnly = institutionalOnly; return this; }
+        public EventResponseBuilder coverImageUrl(String coverImageUrl) { this.coverImageUrl = coverImageUrl; return this; }
         public EventResponseBuilder cancelledReason(String cancelledReason) { this.cancelledReason = cancelledReason; return this; }
         public EventResponseBuilder cancelledAt(LocalDateTime cancelledAt) { this.cancelledAt = cancelledAt; return this; }
         public EventResponseBuilder createdByName(String createdByName) { this.createdByName = createdByName; return this; }
@@ -173,7 +180,7 @@ public class EventResponse {
         public EventResponse build() {
             return new EventResponse(id, title, description, venueName, isVirtual, virtualLink, startTime, endTime,
                     registrationDeadline, capacity, status, registrationMode, category, waitlistEnabled, institutionalOnly,
-                    cancelledReason, cancelledAt, createdByName, createdAt, updatedAt);
+                    coverImageUrl, cancelledReason, cancelledAt, createdByName, createdAt, updatedAt);
         }
     }
 }

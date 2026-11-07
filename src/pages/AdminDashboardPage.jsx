@@ -290,7 +290,7 @@ export default function AdminDashboardPage({ events = [], isLoading, error, onRe
                 </thead>
                 <tbody>
                   {recentOrganizerEvents.map((ev) => {
-                    const coverImg = getEventCoverImage(ev.id, ev.category, ev.title);
+                    const coverImg = getEventCoverImage(ev);
                     return (
                       <tr key={ev.id}>
                         <td>

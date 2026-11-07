@@ -63,6 +63,9 @@ public class Event {
     @Column(name = "institutional_only")
     private Boolean institutionalOnly = false;
 
+    @Column(name = "cover_image_url", length = 1000)
+    private String coverImageUrl;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "created_by_id", nullable = false)
     private User createdBy;

@@ -244,7 +244,7 @@ export default function SuperAdminPage({ events = [], isLoading, error }) {
                     </thead>
                     <tbody>
                       {recentEvents.map((ev) => {
-                        const coverImg = getEventCoverImage(ev.id, ev.category, ev.title);
+                        const coverImg = getEventCoverImage(ev);
                         return (
                           <tr key={ev.id}>
                             <td>

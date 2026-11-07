@@ -28,4 +28,5 @@ public class UpdateEventRequest {
     private EventCategory category;
     private Boolean waitlistEnabled;
     private Boolean institutionalOnly;
+    private String coverImageUrl;
 }

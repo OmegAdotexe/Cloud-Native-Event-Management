@@ -275,7 +275,7 @@ export default function SuperAdminEventsPage({ events = [], isLoading, error }) 
                 <tbody>
                   {groupedEvents.map(({ key, primary: event, items, count, hasDuplicates }) => {
                     const isExpanded = !!expandedDuplicates[key];
-                    const coverImg = getEventCoverImage(event.id, event.category, event.title);
+                    const coverImg = getEventCoverImage(event);
 
                     return (
                       <React.Fragment key={key}>
@@ -470,7 +470,7 @@ export default function SuperAdminEventsPage({ events = [], isLoading, error }) 
             <div className="cc-directory-grid">
               {groupedEvents.map(({ key, primary: event, items, count, hasDuplicates }) => {
                 const isExpanded = !!expandedDuplicates[key];
-                const coverImg = getEventCoverImage(event.id, event.category, event.title);
+                const coverImg = getEventCoverImage(event);
 
                 return (
                   <div key={key} className="relay-card" style={{ display: "flex", flexDirection: "column", padding: "14px", position: "relative" }}>
@@ -600,3 +600,4 @@ export default function SuperAdminEventsPage({ events = [], isLoading, error }) 
     </div>
   );
 }
+

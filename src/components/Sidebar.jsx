@@ -13,6 +13,7 @@ import {
   ChevronRight,
   X,
   Sparkles,
+  UserCheck,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext.jsx";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -140,6 +141,18 @@ export default function Sidebar({
             <Calendar size={16} />
             {!isCollapsed && <span>Events Directory</span>}
           </div>
+
+          {role === "SUPER_ADMIN" && (
+            <div
+              className={`relay-nav-item ${location.pathname === '/admin-management' ? 'active' : ''}`}
+              onClick={() => handleNav("/admin-management")}
+              title={isCollapsed ? "Admin Approvals" : undefined}
+              style={{ justifyContent: isCollapsed ? "center" : "flex-start" }}
+            >
+              <UserCheck size={16} />
+              {!isCollapsed && <span>Admin Approvals</span>}
+            </div>
+          )}
 
           {role === "PARTICIPANT" && (
             <div

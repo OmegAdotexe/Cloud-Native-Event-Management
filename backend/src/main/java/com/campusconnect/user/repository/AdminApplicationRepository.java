@@ -25,13 +25,23 @@ public interface AdminApplicationRepository extends JpaRepository<AdminApplicati
 
     long countByStatus(AdminApplicationStatus status);
 
+    Page<AdminApplication> findByStatus(AdminApplicationStatus status, Pageable pageable);
+
     @Query("SELECT a FROM AdminApplication a WHERE " +
-           "(:status IS NULL OR a.status = :status) AND " +
-           "(:search IS NULL OR LOWER(a.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(a.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(a.department) LIKE LOWER(CONCAT('%', :search, '%')))")
-    Page<AdminApplication> searchApplications(
+           "a.status = :status AND (" +
+           "LOWER(a.fullName) LIKE :search OR " +
+           "LOWER(a.email) LIKE :search OR " +
+           "LOWER(a.department) LIKE :search)")
+    Page<AdminApplication> findByStatusAndSearch(
             @Param("status") AdminApplicationStatus status,
+            @Param("search") String search,
+            Pageable pageable);
+
+    @Query("SELECT a FROM AdminApplication a WHERE " +
+           "LOWER(a.fullName) LIKE :search OR " +
+           "LOWER(a.email) LIKE :search OR " +
+           "LOWER(a.department) LIKE :search")
+    Page<AdminApplication> findBySearch(
             @Param("search") String search,
             Pageable pageable);
 }

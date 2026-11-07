@@ -127,9 +127,20 @@ public class AdminApplicationService {
 
     public Page<AdminApplicationResponse> getApplications(AdminApplicationStatus status, String search, Pageable pageable, User requester) {
         ensureSuperAdmin(requester);
-        String searchParam = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
-        return applicationRepository.searchApplications(status, searchParam, pageable)
-                .map(this::toResponse);
+        boolean hasSearch = search != null && !search.trim().isEmpty();
+        String searchPattern = hasSearch ? "%" + search.trim().toLowerCase() + "%" : null;
+
+        Page<AdminApplication> page;
+        if (status != null && hasSearch) {
+            page = applicationRepository.findByStatusAndSearch(status, searchPattern, pageable);
+        } else if (status != null) {
+            page = applicationRepository.findByStatus(status, pageable);
+        } else if (hasSearch) {
+            page = applicationRepository.findBySearch(searchPattern, pageable);
+        } else {
+            page = applicationRepository.findAll(pageable);
+        }
+        return page.map(this::toResponse);
     }
 
     public AdminApplicationResponse getApplicationById(Long id, User requester) {

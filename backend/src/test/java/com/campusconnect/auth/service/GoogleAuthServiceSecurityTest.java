@@ -93,6 +93,7 @@ public class GoogleAuthServiceSecurityTest {
         @Override public java.util.List<User> findAll(org.springframework.data.domain.Sort sort) { return findAll(); }
         @Override public org.springframework.data.domain.Page<User> findAll(org.springframework.data.domain.Pageable pageable) { return null; }
         @Override public long countByRole(Role role) { return 0; }
+        @Override public java.util.List<User> findByRole(Role role) { return usersById.values().stream().filter(u -> u.getRole() == role).toList(); }
     }
 
     static class TestableGoogleTokenVerifierService extends GoogleTokenVerifierService {

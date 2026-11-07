@@ -98,9 +98,19 @@ export default function NotificationsPage() {
                     transition: "opacity 0.2s",
                   }}
                   onClick={() => {
-                    if (notif.eventId) {
-                      navigate(`/event/${notif.eventId}`);
-                    } else if (notif.type.startsWith("REGISTRATION_")) {
+                    if (notif.type === "REGISTRATION_PENDING") {
+                      if (user?.role === "EVENT_ADMIN" || user?.role === "SUPER_ADMIN") {
+                        navigate("/events", { state: { editEventId: notif.eventId, tab: "REGISTRATIONS" } });
+                      } else {
+                        navigate("/my-registrations");
+                      }
+                    } else if (notif.eventId) {
+                      if (user?.role === "EVENT_ADMIN" || user?.role === "SUPER_ADMIN") {
+                        navigate("/events", { state: { editEventId: notif.eventId, tab: "REGISTRATIONS" } });
+                      } else {
+                        navigate(`/event/${notif.eventId}`);
+                      }
+                    } else if (notif.type && notif.type.startsWith("REGISTRATION_")) {
                       navigate("/my-registrations");
                     } else {
                       navigate("/");

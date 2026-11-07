@@ -165,3 +165,4 @@ export async function uploadEventImage(file, { eventId, type = "poster" } = {}) 
       : "Active high-res preview cached locally. (Backend presigned S3 endpoint pending)",
   };
 }
+

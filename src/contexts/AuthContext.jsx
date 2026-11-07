@@ -13,17 +13,22 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem("relay_auth_token") || null);
+  const [token, setToken] = useState(() => {
+    return sessionStorage.getItem("relay_auth_token") || localStorage.getItem("relay_auth_token") || null;
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // Restore session on mount if token exists
   useEffect(() => {
     async function initAuth() {
-      if (!token) {
+      const activeToken = sessionStorage.getItem("relay_auth_token") || localStorage.getItem("relay_auth_token");
+      if (!activeToken) {
         setIsLoading(false);
         return;
       }
+      // Guarantee session-isolated storage for current tab
+      sessionStorage.setItem("relay_auth_token", activeToken);
       try {
         const me = await relayApi.getMe();
         setUser(me);
@@ -31,6 +36,7 @@ export function AuthProvider({ children }) {
         console.error("Session restoration failed:", err);
         setToken(null);
         setUser(null);
+        sessionStorage.removeItem("relay_auth_token");
         localStorage.removeItem("relay_auth_token");
       } finally {
         setIsLoading(false);
@@ -44,7 +50,8 @@ export function AuthProvider({ children }) {
     setError(null);
     try {
       const data = await relayApi.login(credentials);
-      localStorage.setItem("relay_auth_token", data.token);
+      // Store in sessionStorage so each tab maintains an independent authenticated identity
+      sessionStorage.setItem("relay_auth_token", data.token);
       setToken(data.token);
       setUser(data);
       return data;
@@ -61,10 +68,7 @@ export function AuthProvider({ children }) {
     setError(null);
     try {
       await relayApi.register(userData);
-      // After registration, we don't automatically log in. They can log in themselves, 
-      // or we can just try to log them in if backend returns token. 
-      // The backend returns no token on register based on typical behavior, 
-      // but let's assume they need to log in after register.
+      // After registration, user can login with credentials
     } catch (err) {
       setError(err.message || "Registration failed");
       throw err;
@@ -80,6 +84,7 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.warn("Logout api failed:", err);
     }
+    sessionStorage.removeItem("relay_auth_token");
     localStorage.removeItem("relay_auth_token");
     setToken(null);
     setUser(null);

@@ -20,6 +20,13 @@ public class RegistrationController {
 
     private final RegistrationService registrationService;
 
+    @GetMapping("/pending-registrations")
+    public ResponseEntity<Page<RegistrationResponse>> getPendingRegistrations(
+            Pageable pageable,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(registrationService.getPendingRegistrations(pageable, user));
+    }
+
     @PostMapping("/{eventId}/registrations")
     public ResponseEntity<RegistrationResponse> registerForEvent(
             @PathVariable Long eventId,

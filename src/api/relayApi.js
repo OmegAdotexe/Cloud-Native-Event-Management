@@ -9,7 +9,7 @@ const API_BASE_URL = "";
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  return localStorage.getItem("relay_auth_token");
+  return sessionStorage.getItem("relay_auth_token") || localStorage.getItem("relay_auth_token");
 }
 
 async function authFetch(endpoint, options = {}) {
@@ -178,12 +178,17 @@ export async function getMe() {
 }
 
 export async function logout() {
+  sessionStorage.removeItem("relay_auth_token");
   localStorage.removeItem("relay_auth_token");
   return { ok: true };
 }
 // ---------------------------------------------------------------------------
 // Registrations
 // ---------------------------------------------------------------------------
+
+export async function getPendingRegistrations(page = 0, size = 10) {
+  return authFetch(`/api/events/pending-registrations?page=${page}&size=${size}`);
+}
 
 export async function registerForEvent(eventId) {
   return authFetch(`/api/events/${eventId}/registrations`, { method: "POST" });

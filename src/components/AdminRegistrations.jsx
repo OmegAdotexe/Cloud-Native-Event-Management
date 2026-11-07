@@ -224,7 +224,7 @@ export default function AdminRegistrations({ event }) {
                   Pass
                 </button>
 
-                {event.registrationMode === 'APPROVAL_REQUIRED' && reg.status === 'PENDING' && (
+                {reg.status === 'PENDING' && (
                   <>
                     <button 
                       className="relay-btn relay-btn-sm" 

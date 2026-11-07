@@ -221,17 +221,31 @@ public class RegistrationService {
         registration.setRespondedAt(LocalDateTime.now());
         registration.setRespondedByAdminId(requester.getId());
         if (reason != null && !reason.trim().isEmpty()) {
-            registration.setReason(reason);
+            registration.setReason(reason.trim());
         }
         
+        Registration saved = registrationRepository.save(registration);
+
         eventPublisher.publishEvent(new RegistrationRejectedEvent(
-                registration.getId(),
+                saved.getId(),
                 event.getId(),
-                registration.getParticipant().getId()
+                saved.getParticipant().getId(),
+                reason != null ? reason.trim() : null
         ));
 
-        // We don't save the reason anywhere per the instructions, but we accept it as input.
-        return toResponse(registrationRepository.save(registration));
+        return toResponse(saved);
+    }
+
+    public Page<RegistrationResponse> getPendingRegistrations(Pageable pageable, User requester) {
+        if (requester.getRole() == Role.SUPER_ADMIN) {
+            return registrationRepository.findAllByStatus(RegistrationStatus.PENDING, pageable)
+                    .map(this::toResponse);
+        } else if (requester.getRole() == Role.EVENT_ADMIN) {
+            return registrationRepository.findByEventCreatedByAndStatus(requester, RegistrationStatus.PENDING, pageable)
+                    .map(this::toResponse);
+        } else {
+            throw new AccessDeniedException("You do not have permission to view pending registrations");
+        }
     }
 
     public Page<RegistrationResponse> getEventRegistrations(Long eventId, RegistrationStatus status, Pageable pageable, User requester) {

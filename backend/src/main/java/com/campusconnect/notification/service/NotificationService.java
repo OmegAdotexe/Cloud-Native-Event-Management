@@ -2,7 +2,9 @@ package com.campusconnect.notification.service;
 
 import com.campusconnect.notification.dto.NotificationResponse;
 import com.campusconnect.notification.model.Notification;
+import com.campusconnect.notification.model.NotificationType;
 import com.campusconnect.notification.repository.NotificationRepository;
+import com.campusconnect.user.model.Role;
 import com.campusconnect.user.model.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -11,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -18,12 +21,26 @@ import java.time.LocalDateTime;
 public class NotificationService {
     private final NotificationRepository notificationRepository;
 
+    private static final List<NotificationType> PARTICIPANT_ROUTINE_TYPES = List.of(
+            NotificationType.REGISTRATION_CONFIRMED,
+            NotificationType.REGISTRATION_WAITLISTED,
+            NotificationType.REGISTRATION_REJECTED,
+            NotificationType.REGISTRATION_CANCELLED
+    );
+
     public Page<NotificationResponse> getNotifications(User user, Pageable pageable) {
+        if (user.getRole() == Role.SUPER_ADMIN) {
+            return notificationRepository.findByRecipientAndTypeNotInOrderByCreatedAtDesc(user, PARTICIPANT_ROUTINE_TYPES, pageable)
+                    .map(this::toResponse);
+        }
         return notificationRepository.findByRecipientOrderByCreatedAtDesc(user, pageable)
                 .map(this::toResponse);
     }
 
     public long getUnreadCount(User user) {
+        if (user.getRole() == Role.SUPER_ADMIN) {
+            return notificationRepository.countUnreadByRecipientAndTypeNotIn(user, PARTICIPANT_ROUTINE_TYPES);
+        }
         return notificationRepository.countUnreadByRecipient(user);
     }
 

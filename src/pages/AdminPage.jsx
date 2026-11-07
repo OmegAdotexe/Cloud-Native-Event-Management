@@ -39,6 +39,7 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
   
   const [dashboard, setDashboard] = useState(null);
+  const [pendingApprovals, setPendingApprovals] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
   const [form, setForm] = useState(initialForm);
@@ -89,7 +90,42 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
     relayApi.getAdminDashboard()
       .then(setDashboard)
       .catch(err => console.error("Failed to load dashboard metrics", err));
+
+    relayApi.getPendingRegistrations(0, 20)
+      .then(res => setPendingApprovals(res.content || []))
+      .catch(err => console.warn("Failed to load pending registrations", err));
   }, [events]);
+
+  const refreshPending = () => {
+    relayApi.getPendingRegistrations(0, 20)
+      .then(res => setPendingApprovals(res.content || []))
+      .catch(() => {});
+    relayApi.getAdminDashboard()
+      .then(setDashboard)
+      .catch(() => {});
+  };
+
+  const handlePendingApprove = async (eventId, regId) => {
+    try {
+      await relayApi.approveRegistration(eventId, regId);
+      refreshPending();
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      alert(err.message || "Approval failed");
+    }
+  };
+
+  const handlePendingReject = async (eventId, regId) => {
+    const reason = window.prompt("Reason for rejection (optional):");
+    if (reason === null) return;
+    try {
+      await relayApi.rejectRegistration(eventId, regId, reason);
+      refreshPending();
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      alert(err.message || "Rejection failed");
+    }
+  };
 
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
@@ -296,6 +332,84 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                 <div className="relay-stat-num">{dashboard.pendingRegistrations}</div>
                 <div className="relay-stat-label">Pending Approvals</div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Pending Approvals Quick-Action Banner ───────────────────────────── */}
+        {pendingApprovals.length > 0 && (
+          <div className="relay-card" style={{ marginBottom: "24px", border: "1.5px solid var(--amber)", background: "rgba(232, 148, 58, 0.04)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#FFF4E6", color: "#E8943A", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Clock size={16} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "var(--text)" }}>
+                    Action Required: {pendingApprovals.length} Registration Approval{pendingApprovals.length > 1 ? "s" : ""} Pending
+                  </h3>
+                  <p style={{ margin: 0, fontSize: "12px", color: "var(--mute)" }}>
+                    Review participant join requests for your approval-required events.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {pendingApprovals.map((reg) => (
+                <div key={reg.id} style={{
+                  padding: "12px 16px",
+                  background: "var(--surface)",
+                  borderRadius: "10px",
+                  border: "1px solid var(--border)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: "12px"
+                }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: "14px", color: "var(--text)" }}>
+                      {reg.participantName}
+                      <span style={{ marginLeft: "8px", fontSize: "12px", color: "var(--mute)", fontWeight: 400 }}>#{reg.participantId}</span>
+                    </div>
+                    <div style={{ fontSize: "12.5px", color: "var(--primary)", marginTop: "2px", fontWeight: 500 }}>
+                      Event: {reg.eventTitle || `Event #${reg.eventId}`}
+                    </div>
+                    <div style={{ fontSize: "11.5px", color: "var(--mute)", marginTop: "2px" }}>
+                      Requested: {new Date(reg.registeredAt).toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    <button
+                      className="relay-btn relay-btn-sm"
+                      style={{ background: "var(--teal)", color: "#fff" }}
+                      onClick={() => handlePendingApprove(reg.eventId, reg.id)}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      className="relay-btn-danger relay-btn-sm"
+                      onClick={() => handlePendingReject(reg.eventId, reg.id)}
+                    >
+                      Reject
+                    </button>
+                    <button
+                      className="relay-btn-ghost relay-btn-sm"
+                      onClick={() => {
+                        const ev = events.find(e => e.id === reg.eventId);
+                        if (ev) {
+                          edit(ev);
+                          setActiveTab("REGISTRATIONS");
+                        }
+                      }}
+                    >
+                      View Event
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

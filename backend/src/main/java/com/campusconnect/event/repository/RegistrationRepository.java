@@ -46,4 +46,10 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
     List<com.campusconnect.analytics.dto.RegistrationTrendDto> getRegistrationTrendForEvent(@Param("event") Event event);
 
     long countByStatus(RegistrationStatus status);
+
+    @Query("SELECT r FROM Registration r WHERE r.event.createdBy = :user AND r.status = :status ORDER BY r.registeredAt DESC")
+    Page<Registration> findByEventCreatedByAndStatus(@Param("user") User user, @Param("status") RegistrationStatus status, Pageable pageable);
+
+    @Query("SELECT r FROM Registration r WHERE r.status = :status ORDER BY r.registeredAt DESC")
+    Page<Registration> findAllByStatus(@Param("status") RegistrationStatus status, Pageable pageable);
 }

@@ -150,3 +150,4 @@ export const handleImageError = (e, fallbackUrl = CURATED_EVENT_IMAGES.CAMPUS_QU
     e.target.src = fallbackUrl;
   }
 };
+

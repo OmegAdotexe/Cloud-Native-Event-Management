@@ -33,6 +33,15 @@ public class NotificationProducer {
         registrationRepository.findById(event.getRegistrationId()).ifPresent(registration -> {
             sendNotification(event.getParticipantId(), event.getEventId(), NotificationType.REGISTRATION_CONFIRMED, 
                     "Registration Confirmed", "Your registration has been confirmed for: " + registration.getEvent().getTitle(), NotificationChannel.EMAIL);
+
+            // Informational notification for Event Admin for automatically confirmed (OPEN) events
+            if (registration.getEvent().getRegistrationMode() == RegistrationMode.OPEN) {
+                Long creatorId = registration.getEvent().getCreatedBy().getId();
+                if (!creatorId.equals(event.getParticipantId())) {
+                    sendNotification(creatorId, event.getEventId(), NotificationType.REGISTRATION_CONFIRMED,
+                            "New Participant Registered", registration.getParticipant().getName() + " has registered for your event: " + registration.getEvent().getTitle(), NotificationChannel.IN_APP);
+                }
+            }
         });
     }
 
@@ -49,10 +58,15 @@ public class NotificationProducer {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleRegistrationPending(RegistrationPendingEvent event) {
-        log.info("Sending REGISTRATION_PENDING admin notification for registrationId: {}", event.getRegistrationId());
+        log.info("Sending REGISTRATION_PENDING notifications for registrationId: {}", event.getRegistrationId());
         registrationRepository.findById(event.getRegistrationId()).ifPresent(registration -> {
+            // Notify Event Admin requesting approval
             sendNotification(registration.getEvent().getCreatedBy().getId(), event.getEventId(), NotificationType.REGISTRATION_PENDING,
-                    "Registration Pending Approval", registration.getParticipant().getName() + " has requested to join: " + registration.getEvent().getTitle(), NotificationChannel.IN_APP);
+                    "New Registration Requires Approval", registration.getParticipant().getName() + " has requested to join: " + registration.getEvent().getTitle() + ". Click to review.", NotificationChannel.IN_APP);
+
+            // Notify Participant that their registration request has been submitted
+            sendNotification(registration.getParticipant().getId(), event.getEventId(), NotificationType.REGISTRATION_PENDING,
+                    "Registration Submitted", "Your registration for " + registration.getEvent().getTitle() + " has been submitted and is pending approval by the event organizer.", NotificationChannel.IN_APP);
         });
     }
 
@@ -60,8 +74,20 @@ public class NotificationProducer {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleRegistrationRejected(RegistrationRejectedEvent event) {
         log.info("Sending REGISTRATION_REJECTED notification for registrationId: {}", event.getRegistrationId());
-        sendNotification(event.getParticipantId(), event.getEventId(), NotificationType.REGISTRATION_REJECTED,
-                "Registration Rejected", "Your registration for this event was rejected by an admin.", NotificationChannel.EMAIL);
+        registrationRepository.findById(event.getRegistrationId()).ifPresentOrElse(registration -> {
+            String reasonText = (event.getReason() != null && !event.getReason().trim().isEmpty())
+                    ? " Reason: " + event.getReason().trim()
+                    : "";
+            String msg = "Your registration for " + registration.getEvent().getTitle() + " was not approved." + reasonText;
+            sendNotification(event.getParticipantId(), event.getEventId(), NotificationType.REGISTRATION_REJECTED,
+                    "Registration Rejected", msg, NotificationChannel.EMAIL);
+        }, () -> {
+            String reasonText = (event.getReason() != null && !event.getReason().trim().isEmpty())
+                    ? " Reason: " + event.getReason().trim()
+                    : "";
+            sendNotification(event.getParticipantId(), event.getEventId(), NotificationType.REGISTRATION_REJECTED,
+                    "Registration Rejected", "Your registration for this event was not approved." + reasonText, NotificationChannel.EMAIL);
+        });
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

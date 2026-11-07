@@ -9,4 +9,10 @@ public class RegistrationRejectedEvent {
     private final Long registrationId;
     private final Long eventId;
     private final Long participantId;
+    private final String reason;
+
+    public RegistrationRejectedEvent(Long registrationId, Long eventId, Long participantId) {
+        this(registrationId, eventId, participantId, null);
+    }
 }
+

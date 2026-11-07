@@ -370,12 +370,12 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
       <div className="relay-topbar">
         <div>
           <h1 style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span>Hi, {user?.name || "Organizer"}</span>
+            <span>Events Management Workspace</span>
             <span style={{ fontSize: "11.5px", background: "var(--primary-light)", color: "var(--primary)", padding: "2px 8px", borderRadius: "10px", fontWeight: 600 }}>
-              {isSuperAdmin ? "Super Admin" : "Event Organizer"}
+              {events.length} Events Total
             </span>
           </h1>
-          <p>{isSuperAdmin ? "Manage all university events, registrations, and platform operations." : "Manage your campus events, review attendees, and view analytics."}</p>
+          <p>Create and publish campus events, configure venues, manage registrations, and review attendees.</p>
         </div>
         <button className="cc-btn-primary" onClick={openCreate} style={{ padding: "10px 18px", fontSize: "13.5px" }}>
           <Plus size={16} /> Create Event
@@ -383,39 +383,6 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
       </div>
 
       <div className="relay-body">
-        {/* KPI Stat Cards */}
-        {dashboard && !selectedId && !isCreating && (
-          <div className="relay-stat-grid" style={{ marginBottom: "28px" }}>
-            <div className="relay-stat-card">
-              <div className="relay-stat-icon purple"><Calendar size={20} /></div>
-              <div>
-                <div className="relay-stat-num">{dashboard.totalEvents}</div>
-                <div className="relay-stat-label">Total Events</div>
-              </div>
-            </div>
-            <div className="relay-stat-card">
-              <div className="relay-stat-icon teal"><CheckCircle2 size={20} /></div>
-              <div>
-                <div className="relay-stat-num">{dashboard.publishedEvents}</div>
-                <div className="relay-stat-label">Published & Live</div>
-              </div>
-            </div>
-            <div className="relay-stat-card">
-              <div className="relay-stat-icon blue"><Users size={20} /></div>
-              <div>
-                <div className="relay-stat-num">{dashboard.totalRegistrations}</div>
-                <div className="relay-stat-label">Total Registrations</div>
-              </div>
-            </div>
-            <div className="relay-stat-card">
-              <div className="relay-stat-icon amber"><Clock size={20} /></div>
-              <div>
-                <div className="relay-stat-num">{dashboard.pendingRegistrations}</div>
-                <div className="relay-stat-label">Pending Approvals</div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ── Pending Approvals Quick-Action Banner ───────────────────────────── */}
         {pendingApprovals.length > 0 && (

@@ -17,6 +17,8 @@ import RegisterPage from "./pages/RegisterPage.jsx";
 import MyRegistrationsPage from "./pages/MyRegistrationsPage.jsx";
 import NotificationsPage from "./pages/NotificationsPage.jsx";
 import SuperAdminPage from "./pages/SuperAdminPage.jsx";
+import SuperAdminEventsPage from "./pages/SuperAdminEventsPage.jsx";
+import AdminDashboardPage from "./pages/AdminDashboardPage.jsx";
 import ParticipantEventsPage from "./pages/ParticipantEventsPage.jsx";
 import EventDetailPage from "./pages/EventDetailPage.jsx";
 import EventAnalyticsPage from "./pages/EventAnalyticsPage.jsx";
@@ -299,11 +301,13 @@ function MainApp() {
         <TopHeader onOpenMobileMenu={() => setMobileMenuOpen(true)} />
         <Routes>
           <Route path="/" element={<>
-            {(role === "EVENT_ADMIN" || role === "SUPER_ADMIN") && <SuperAdminPage {...shared} />}
+            {role === "SUPER_ADMIN" && <SuperAdminPage {...shared} />}
+            {role === "EVENT_ADMIN" && <AdminDashboardPage {...shared} />}
             {role === "PARTICIPANT" && <ParticipantPage {...shared} />}
           </>} />
           <Route path="/events" element={<>
-            {(role === "EVENT_ADMIN" || role === "SUPER_ADMIN") && <AdminPage {...shared} />}
+            {role === "SUPER_ADMIN" && <SuperAdminEventsPage {...shared} />}
+            {role === "EVENT_ADMIN" && <AdminPage {...shared} />}
             {role === "PARTICIPANT" && <ParticipantEventsPage {...shared} />}
           </>} />
           {(role === "EVENT_ADMIN" || role === "SUPER_ADMIN") && (

@@ -1,16 +1,17 @@
-import React, { useState } from "react";
-import { X, QrCode, CheckCircle2, AlertCircle, Search, ShieldCheck } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { X, QrCode, CheckCircle2, AlertCircle, ShieldCheck, Camera, Upload } from "lucide-react";
 import * as relayApi from "../api/relayApi.js";
 
 export default function TicketVerifierModal({ event, onClose }) {
   const [ticketInput, setTicketInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [imageDecoding, setImageDecoding] = useState(false);
   const [result, setResult] = useState(null);
   const [verifiedAttendees, setVerifiedAttendees] = useState([]);
+  const fileInputRef = useRef(null);
 
-  const handleVerify = async (e) => {
-    if (e) e.preventDefault();
-    const raw = ticketInput.trim();
+  const verifyTicketCode = async (rawCode) => {
+    const raw = (rawCode || "").trim();
     if (!raw) return;
 
     setLoading(true);
@@ -87,6 +88,69 @@ export default function TicketVerifierModal({ event, onClose }) {
     }
   };
 
+  const handleManualSubmit = (e) => {
+    if (e) e.preventDefault();
+    verifyTicketCode(ticketInput);
+  };
+
+  const handleImageFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageDecoding(true);
+    setResult(null);
+
+    try {
+      let decodedText = null;
+
+      // 1. Try native Chromium BarcodeDetector if available
+      if (typeof window !== "undefined" && "BarcodeDetector" in window) {
+        try {
+          const detector = new window.BarcodeDetector({ formats: ["qr_code"] });
+          const bitmap = await createImageBitmap(file);
+          const barcodes = await detector.detect(bitmap);
+          if (barcodes.length > 0 && barcodes[0].rawValue) {
+            decodedText = barcodes[0].rawValue;
+          }
+        } catch (detectorErr) {
+          console.warn("Native BarcodeDetector attempt:", detectorErr);
+        }
+      }
+
+      // 2. Fallback to QR decoding service
+      if (!decodedText) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const resp = await fetch("https://api.qrserver.com/v1/read-qr-code/", {
+          method: "POST",
+          body: formData,
+        });
+        const json = await resp.json();
+        if (json && json[0]?.symbol?.[0]?.data) {
+          decodedText = json[0].symbol[0].data;
+        }
+      }
+
+      if (decodedText) {
+        setTicketInput(decodedText);
+        await verifyTicketCode(decodedText);
+      } else {
+        setResult({
+          valid: false,
+          error: "Could not detect a valid QR code in the uploaded image. Please ensure the QR code is clearly visible or enter the code manually.",
+        });
+      }
+    } catch (err) {
+      setResult({
+        valid: false,
+        error: "Failed to read QR image. Please enter the ticket code manually.",
+      });
+    } finally {
+      setImageDecoding(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   return (
     <div
       className="relay-modal-backdrop"
@@ -159,10 +223,10 @@ export default function TicketVerifierModal({ event, onClose }) {
         {/* Content */}
         <div style={{ padding: "24px" }}>
           <div style={{ fontSize: "13px", color: "var(--mute)", marginBottom: "16px" }}>
-            Verify attendee passes for <strong>{event.title}</strong>. Enter the ticket code or scanned QR URL:
+            Verify attendee passes for <strong>{event.title}</strong>. Enter the ticket code or upload a QR pass image:
           </div>
 
-          <form onSubmit={handleVerify} style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
+          <form onSubmit={handleManualSubmit} style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
             <div style={{ position: "relative", flex: 1 }}>
               <QrCode size={16} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--mute)" }} />
               <input
@@ -178,12 +242,34 @@ export default function TicketVerifierModal({ event, onClose }) {
             <button
               className="relay-btn"
               type="submit"
-              disabled={loading || !ticketInput.trim()}
+              disabled={loading || imageDecoding || !ticketInput.trim()}
               style={{ background: "var(--teal)", minWidth: "90px" }}
             >
               {loading ? "Checking..." : "Verify"}
             </button>
           </form>
+
+          {/* QR Image Upload / Camera Trigger */}
+          <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              capture="environment"
+              style={{ display: "none" }}
+              onChange={handleImageFileChange}
+            />
+            <button
+              type="button"
+              className="relay-btn-ghost relay-btn-sm"
+              disabled={imageDecoding || loading}
+              onClick={() => fileInputRef.current?.click()}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px", width: "100%", justifyContent: "center", padding: "8px" }}
+            >
+              <Camera size={15} />
+              {imageDecoding ? "Scanning QR image..." : "Scan from Camera / Upload QR Pass Photo"}
+            </button>
+          </div>
 
           {/* Result Box */}
           {result && (

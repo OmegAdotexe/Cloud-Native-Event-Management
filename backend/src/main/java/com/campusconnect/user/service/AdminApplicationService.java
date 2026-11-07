@@ -21,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,9 +38,32 @@ public class AdminApplicationService {
     private final UserRepository userRepository;
     private final EventRepository eventRepository;
     private final NotificationProducer notificationProducer;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
     public AdminApplicationResponse submitApplication(AdminApplicationRequest req, User applicant) {
+        if (applicant == null) {
+            if (req.getEmail() == null || req.getEmail().isBlank()) {
+                throw new IllegalArgumentException("Email is required to register as an event organizer.");
+            }
+            String email = req.getEmail().trim().toLowerCase();
+            applicant = userRepository.findByEmail(email).orElseGet(() -> {
+                if (req.getPassword() == null || req.getPassword().isBlank()) {
+                    throw new IllegalArgumentException("Password is required to register as an event organizer.");
+                }
+                User newUser = User.builder()
+                        .name(req.getFullName().trim())
+                        .email(email)
+                        .password(passwordEncoder.encode(req.getPassword()))
+                        .role(Role.PARTICIPANT) // Zero privilege escalation: starts as PARTICIPANT
+                        .department(req.getDepartment().trim())
+                        .status("ACTIVE")
+                        .authProvider("LOCAL")
+                        .build();
+                return userRepository.save(newUser);
+            });
+        }
+
         if (applicant.getRole() == Role.EVENT_ADMIN || applicant.getRole() == Role.SUPER_ADMIN) {
             throw new IllegalStateException("Your account already holds administrative privileges.");
         }
@@ -338,3 +362,4 @@ public class AdminApplicationService {
                 .build();
     }
 }
+

@@ -11,6 +11,10 @@ public class AdminApplicationRequest {
     @NotBlank(message = "Full name is required")
     private String fullName;
 
+    private String email;
+
+    private String password;
+
     @NotBlank(message = "Department or organization name is required")
     private String department;
 

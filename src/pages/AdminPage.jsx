@@ -4,7 +4,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import * as relayApi from "../api/relayApi.js";
 import { 
   Calendar, CheckCircle2, Users, Clock, Edit, FileText, Search, Plus,
-  BarChart2, Eye, MapPin, Globe, Sparkles, AlertCircle, ShieldCheck
+  BarChart2, Eye, MapPin, Globe, Sparkles, AlertCircle, ShieldCheck,
+  LayoutGrid, List, Filter, RotateCcw
 } from "lucide-react";
 import AdminRegistrations from "../components/AdminRegistrations.jsx";
 import AdminTimeline from "../components/AdminTimeline.jsx";
@@ -49,6 +50,12 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
   const [actionError, setActionError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [categoryFilter, setCategoryFilter] = useState("ALL");
+  const [timeFilter, setTimeFilter] = useState("ALL");
+  const [modeFilter, setModeFilter] = useState("ALL");
+  const [clubFilter, setClubFilter] = useState("ALL");
+  const [sortBy, setSortBy] = useState("DATE_ASC");
+  const [viewMode, setViewMode] = useState("LIST");
   const [activeTab, setActiveTab] = useState("DETAILS");
   
   const selected = events.find((event) => event.id === selectedId);
@@ -278,10 +285,49 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
     } 
   };
 
-  const filteredEvents = events.filter(e => {
+  const availableClubs = Array.from(
+    new Set(events.map(e => e.organizerClub || e.organizer).filter(Boolean))
+  ).sort();
+
+  const isFiltered = search || statusFilter !== "ALL" || categoryFilter !== "ALL" || timeFilter !== "ALL" || modeFilter !== "ALL" || clubFilter !== "ALL";
+
+  const clearFilters = () => {
+    setSearch("");
+    setStatusFilter("ALL");
+    setCategoryFilter("ALL");
+    setTimeFilter("ALL");
+    setModeFilter("ALL");
+    setClubFilter("ALL");
+    setSortBy("DATE_ASC");
+  };
+
+  const now = new Date();
+  const filteredEvents = events.filter((e) => {
+    if (search) {
+      const q = search.toLowerCase();
+      const matchTitle = e.title?.toLowerCase().includes(q);
+      const matchVenue = e.venueName?.toLowerCase().includes(q);
+      const matchClub = (e.organizerClub || e.organizer)?.toLowerCase().includes(q);
+      if (!matchTitle && !matchVenue && !matchClub) return false;
+    }
     if (statusFilter !== "ALL" && e.status !== statusFilter) return false;
-    if (search && !e.title.toLowerCase().includes(search.toLowerCase())) return false;
+    if (categoryFilter !== "ALL" && e.category !== categoryFilter) return false;
+    if (modeFilter !== "ALL" && e.registrationMode !== modeFilter) return false;
+    if (clubFilter !== "ALL" && (e.organizerClub || e.organizer) !== clubFilter) return false;
+    if (timeFilter !== "ALL") {
+      const start = new Date(e.startTime);
+      const end = new Date(e.endTime || e.startTime);
+      if (timeFilter === "UPCOMING" && start <= now) return false;
+      if (timeFilter === "ONGOING" && (start > now || end < now)) return false;
+      if (timeFilter === "PAST" && end >= now) return false;
+    }
     return true;
+  }).sort((a, b) => {
+    if (sortBy === "DATE_ASC") return new Date(a.startTime) - new Date(b.startTime);
+    if (sortBy === "DATE_DESC") return new Date(b.startTime) - new Date(a.startTime);
+    if (sortBy === "TITLE_ASC") return (a.title || "").localeCompare(b.title || "");
+    if (sortBy === "CAPACITY_DESC") return (b.capacity || 0) - (a.capacity || 0);
+    return 0;
   });
 
   return (
@@ -731,39 +777,140 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
           </div>
         )}
 
-        {/* ── My Events Management Table ─────────────────────────── */}
+        {/* ── Event Directory & Management ───────────────────────── */}
         {!selectedId && !isCreating && (
           <div className="relay-card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
+            {/* Directory Header & View Controls */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "12px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <div className="relay-feed-title" style={{ margin: 0, fontSize: "16px" }}>Campus Events</div>
+                <div className="relay-feed-title" style={{ margin: 0, fontSize: "16px" }}>Campus Events Directory</div>
                 <span style={{ fontSize: "12px", background: "var(--primary-light)", color: "var(--primary)", padding: "2px 8px", borderRadius: "10px", fontWeight: 600 }}>
-                  {filteredEvents.length} Total
+                  {filteredEvents.length} of {events.length} Events
                 </span>
+                {isFiltered && (
+                  <button 
+                    type="button" 
+                    onClick={clearFilters}
+                    className="relay-btn-ghost relay-btn-sm"
+                    style={{ fontSize: "11.5px", padding: "3px 8px", display: "flex", alignItems: "center", gap: "4px" }}
+                  >
+                    <RotateCcw size={12} /> Reset Filters
+                  </button>
+                )}
               </div>
 
-              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                <div style={{ position: "relative" }}>
-                  <Search size={14} style={{ position: "absolute", left: "10px", top: "10px", color: "var(--mute)" }} />
+              {/* View Toggle (Grid / List) */}
+              <div className="cc-view-toggle">
+                <button
+                  type="button"
+                  className={`cc-view-toggle-btn ${viewMode === "LIST" ? "active" : ""}`}
+                  onClick={() => setViewMode("LIST")}
+                  title="List View"
+                >
+                  <List size={16} />
+                </button>
+                <button
+                  type="button"
+                  className={`cc-view-toggle-btn ${viewMode === "GRID" ? "active" : ""}`}
+                  onClick={() => setViewMode("GRID")}
+                  title="Grid View"
+                >
+                  <LayoutGrid size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Filter Toolbar */}
+            <div className="cc-directory-toolbar">
+              {/* Row 1: Search & Core Filters */}
+              <div className="cc-filter-row">
+                <div style={{ position: "relative", flexGrow: 1, minWidth: "220px" }}>
+                  <Search size={14} style={{ position: "absolute", left: "12px", top: "11px", color: "var(--mute)" }} />
                   <input 
                     type="text" 
-                    placeholder="Search events..." 
+                    placeholder="Search by title, venue, club..." 
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    style={{ padding: "8px 12px 8px 30px", borderRadius: "9px", border: "1px solid var(--border)", fontSize: "13px", outline: "none", background: "var(--bg)" }}
+                    style={{ width: "100%", padding: "8px 12px 8px 34px", borderRadius: "9px", border: "1px solid var(--border)", fontSize: "13px", outline: "none", background: "var(--bg)", boxSizing: "border-box" }}
                   />
                 </div>
+
                 <select 
                   value={statusFilter} 
                   onChange={(e) => setStatusFilter(e.target.value)}
                   style={{ padding: "8px 12px", borderRadius: "9px", border: "1px solid var(--border)", fontSize: "13px", outline: "none", background: "var(--surface)" }}
                 >
                   <option value="ALL">All Statuses</option>
-                  <option value="DRAFT">Draft</option>
                   <option value="PUBLISHED">Published</option>
+                  <option value="DRAFT">Draft</option>
                   <option value="CANCELLED">Cancelled</option>
                   <option value="COMPLETED">Completed</option>
                 </select>
+
+                <select 
+                  value={categoryFilter} 
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  style={{ padding: "8px 12px", borderRadius: "9px", border: "1px solid var(--border)", fontSize: "13px", outline: "none", background: "var(--surface)" }}
+                >
+                  <option value="ALL">All Categories</option>
+                  <option value="WORKSHOP">Workshop / Tech</option>
+                  <option value="SEMINAR">Seminar / Keynote</option>
+                  <option value="CULTURAL">Cultural & Arts</option>
+                  <option value="SPORTS">Sports & Athletics</option>
+                  <option value="OTHER">Other Competitions</option>
+                </select>
+
+                <select 
+                  value={timeFilter} 
+                  onChange={(e) => setTimeFilter(e.target.value)}
+                  style={{ padding: "8px 12px", borderRadius: "9px", border: "1px solid var(--border)", fontSize: "13px", outline: "none", background: "var(--surface)" }}
+                >
+                  <option value="ALL">All Timelines</option>
+                  <option value="UPCOMING">Upcoming Events</option>
+                  <option value="ONGOING">Ongoing Events</option>
+                  <option value="PAST">Past Events</option>
+                </select>
+              </div>
+
+              {/* Row 2: Secondary Filters & Sort */}
+              <div className="cc-filter-row" style={{ fontSize: "12.5px" }}>
+                <select 
+                  value={modeFilter} 
+                  onChange={(e) => setModeFilter(e.target.value)}
+                  style={{ padding: "7px 10px", borderRadius: "8px", border: "1px solid var(--border)", fontSize: "12.5px", outline: "none", background: "var(--surface)" }}
+                >
+                  <option value="ALL">All Registration Modes</option>
+                  <option value="OPEN">Open Registration</option>
+                  <option value="APPROVAL_REQUIRED">Approval Required</option>
+                  <option value="INVITE_ONLY">Invite Only</option>
+                </select>
+
+                {availableClubs.length > 0 && (
+                  <select 
+                    value={clubFilter} 
+                    onChange={(e) => setClubFilter(e.target.value)}
+                    style={{ padding: "7px 10px", borderRadius: "8px", border: "1px solid var(--border)", fontSize: "12.5px", outline: "none", background: "var(--surface)" }}
+                  >
+                    <option value="ALL">All Clubs / Organizers</option>
+                    {availableClubs.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                )}
+
+                <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ color: "var(--mute)", fontSize: "12px" }}>Sort:</span>
+                  <select 
+                    value={sortBy} 
+                    onChange={(e) => setSortBy(e.target.value)}
+                    style={{ padding: "7px 10px", borderRadius: "8px", border: "1px solid var(--border)", fontSize: "12.5px", outline: "none", background: "var(--surface)" }}
+                  >
+                    <option value="DATE_ASC">Date: Soonest First</option>
+                    <option value="DATE_DESC">Date: Latest First</option>
+                    <option value="TITLE_ASC">Title: A to Z</option>
+                    <option value="CAPACITY_DESC">Capacity: High to Low</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -773,16 +920,23 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
               <div className="relay-empty" style={{ padding: "40px 0" }}>
                 <Calendar size={32} style={{ color: "var(--mute)", margin: "0 auto 10px" }} />
                 <p>No events found matching your filter criteria.</p>
+                {isFiltered && (
+                  <button type="button" className="relay-btn-ghost relay-btn-sm" onClick={clearFilters} style={{ marginTop: "10px" }}>
+                    Clear Filters
+                  </button>
+                )}
               </div>
             )}
 
-            {!isLoading && !error && filteredEvents.length > 0 && (
+            {/* List View Table */}
+            {!isLoading && !error && filteredEvents.length > 0 && viewMode === "LIST" && (
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
                   <thead>
                     <tr style={{ borderBottom: "1px solid var(--border)", textAlign: "left", color: "var(--mute)" }}>
                       <th style={{ padding: "12px 10px", fontWeight: 600 }}>Event</th>
                       <th style={{ padding: "12px 10px", fontWeight: 600 }}>Category</th>
+                      <th style={{ padding: "12px 10px", fontWeight: 600 }}>Registration</th>
                       <th style={{ padding: "12px 10px", fontWeight: 600 }}>Status</th>
                       <th style={{ padding: "12px 10px", fontWeight: 600 }}>Date & Venue</th>
                       <th style={{ padding: "12px 10px", fontWeight: 600 }}>Capacity</th>
@@ -805,13 +959,23 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                               <div>
                                 <div style={{ fontWeight: 600, color: "var(--text)" }}>{event.title}</div>
                                 <div style={{ fontSize: "11.5px", color: "var(--mute)" }}>
-                                  Deadline: {event.registrationDeadline ? new Date(event.registrationDeadline).toLocaleDateString() : "Open"}
+                                  {event.organizerClub || event.createdByName || "Campus Organizer"}
                                 </div>
                               </div>
                             </div>
                           </td>
                           <td style={{ padding: "12px 10px", color: "var(--text-secondary)", fontSize: "12px" }}>
                             {event.category}
+                          </td>
+                          <td style={{ padding: "12px 10px" }}>
+                            <span style={{ 
+                              padding: "2px 8px", borderRadius: "8px", fontSize: "11px", fontWeight: 500,
+                              background: event.registrationMode === "APPROVAL_REQUIRED" ? "var(--amber-light)" : "var(--bg)",
+                              color: event.registrationMode === "APPROVAL_REQUIRED" ? "var(--amber)" : "var(--mute)",
+                              border: "1px solid var(--border)"
+                            }}>
+                              {event.registrationMode === "APPROVAL_REQUIRED" ? "Approval Req." : event.registrationMode || "Open"}
+                            </span>
                           </td>
                           <td style={{ padding: "12px 10px" }}>
                             <span style={{ 
@@ -825,7 +989,7 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                           <td style={{ padding: "12px 10px", color: "var(--text-secondary)", fontSize: "12px" }}>
                             <div>{new Date(event.startTime).toLocaleDateString()}</div>
                             <div style={{ color: "var(--mute)", fontSize: "11px" }}>
-                              {event.isVirtual ? "Virtual" : event.venueName}
+                              {event.isVirtual ? "Virtual Event" : event.venueName}
                             </div>
                           </td>
                           <td style={{ padding: "12px 10px", color: "var(--text-secondary)", fontSize: "12px" }}>
@@ -864,6 +1028,102 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                     })}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Grid View Cards */}
+            {!isLoading && !error && filteredEvents.length > 0 && viewMode === "GRID" && (
+              <div className="cc-directory-grid">
+                {filteredEvents.map(event => {
+                  const cover = getEventCoverImage(event);
+                  return (
+                    <div 
+                      key={event.id}
+                      style={{ 
+                        background: "var(--surface)", 
+                        border: "1px solid var(--border)", 
+                        borderRadius: "14px", 
+                        overflow: "hidden", 
+                        display: "flex", 
+                        flexDirection: "column",
+                        transition: "transform .2s ease, box-shadow .2s ease",
+                      }}
+                    >
+                      <div style={{ position: "relative", height: "150px", width: "100%", background: "#17152B" }}>
+                        <img 
+                          src={cover} 
+                          alt={event.title} 
+                          onError={handleImageError}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                        />
+                        <div style={{ position: "absolute", top: "10px", right: "10px" }}>
+                          <span style={{ 
+                            padding: "3px 10px", borderRadius: "12px", fontSize: "11px", fontWeight: 700,
+                            background: event.status === "PUBLISHED" ? "var(--teal)" : event.status === "CANCELLED" ? "var(--coral)" : "var(--primary)",
+                            color: "#fff"
+                          }}>
+                            {event.status}
+                          </span>
+                        </div>
+                        <div style={{ position: "absolute", bottom: "10px", left: "10px" }}>
+                          <span style={{ 
+                            padding: "2px 8px", borderRadius: "8px", fontSize: "11px", fontWeight: 600,
+                            background: "rgba(0,0,0,0.65)", color: "#fff", backdropFilter: "blur(4px)"
+                          }}>
+                            {event.category}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ padding: "14px", display: "flex", flexDirection: "column", flexGrow: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: "14.5px", color: "var(--text)", marginBottom: "6px" }}>
+                          {event.title}
+                        </div>
+                        <div style={{ fontSize: "12px", color: "var(--mute)", marginBottom: "12px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                          <div>📅 {new Date(event.startTime).toLocaleDateString()}</div>
+                          <div>📍 {event.isVirtual ? "Virtual Event" : event.venueName}</div>
+                          <div>👥 Capacity: {event.capacity} seats</div>
+                        </div>
+
+                        <div style={{ marginTop: "auto", paddingTop: "10px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ 
+                            fontSize: "11px", color: "var(--mute)",
+                            background: "var(--bg)", padding: "2px 6px", borderRadius: "6px", border: "1px solid var(--border)"
+                          }}>
+                            {event.registrationMode === "APPROVAL_REQUIRED" ? "Approval Req." : "Open"}
+                          </span>
+
+                          <div style={{ display: "flex", gap: "6px" }}>
+                            <button
+                              type="button"
+                              className="relay-btn-ghost relay-btn-sm"
+                              onClick={() => navigate(`/event/${event.id}`)}
+                              title="Public Event Page"
+                            >
+                              <Eye size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              className="relay-btn-ghost relay-btn-sm"
+                              onClick={() => edit(event)}
+                              title="Edit Event"
+                            >
+                              <Edit size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              className="relay-btn-ghost relay-btn-sm"
+                              onClick={() => navigate(`/admin/events/${event.id}/analytics`)}
+                              title="Analytics"
+                            >
+                              <BarChart2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

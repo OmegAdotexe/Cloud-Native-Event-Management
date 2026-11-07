@@ -87,6 +87,32 @@ public class EventService {
         return events.stream().map(this::toResponse).toList();
     }
 
+    public List<EventResponse> getPublishedEvents(EventCategory category) {
+        List<Event> events = (category != null)
+                ? eventRepository.findByStatusAndCategoryOrderByStartTimeAsc(EventStatus.PUBLISHED, category)
+                : eventRepository.findByStatusOrderByStartTimeAsc(EventStatus.PUBLISHED);
+        return events.stream().map(this::toResponse).toList();
+    }
+
+    public java.util.Map<String, Long> getCategoryStats() {
+        java.util.Map<String, Long> stats = new java.util.LinkedHashMap<>();
+        for (EventCategory cat : EventCategory.values()) {
+            stats.put(cat.name(), 0L);
+        }
+        List<Object[]> rows = eventRepository.countEventsByStatusGroupByCategory(EventStatus.PUBLISHED);
+        long total = 0L;
+        for (Object[] row : rows) {
+            if (row != null && row.length >= 2 && row[0] != null && row[1] != null) {
+                EventCategory cat = (EventCategory) row[0];
+                Long count = ((Number) row[1]).longValue();
+                stats.put(cat.name(), count);
+                total += count;
+            }
+        }
+        stats.put("TOTAL", total);
+        return stats;
+    }
+
     public EventResponse getEventById(Long id, User requester) {
         Event event = findEvent(id);
         if (requester.getRole() == Role.PARTICIPANT && event.getStatus() != EventStatus.PUBLISHED) {

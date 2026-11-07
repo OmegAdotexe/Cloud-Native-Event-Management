@@ -1,9 +1,6 @@
 package com.campusconnect.auth.controller;
 
-import com.campusconnect.auth.dto.AuthResponse;
-import com.campusconnect.auth.dto.LoginRequest;
-import com.campusconnect.auth.dto.RegisterRequest;
-import com.campusconnect.auth.dto.UserDto;
+import com.campusconnect.auth.dto.*;
 import com.campusconnect.auth.service.AuthService;
 import com.campusconnect.user.model.User;
 import jakarta.validation.Valid;
@@ -11,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -34,14 +33,21 @@ public class AuthController {
         if (user == null) {
             return ResponseEntity.status(401).build();
         }
-        
-        UserDto dto = UserDto.builder()
-                .id(user.getId())
-                .name(user.getName())
-                .email(user.getEmail())
-                .role(user.getRole())
-                .build();
-                
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(authService.toDto(user));
+    }
+
+    @PutMapping("/profile")
+    public ResponseEntity<UserDto> updateProfile(
+            @AuthenticationPrincipal User user,
+            @Valid @RequestBody UpdateProfileRequest request) {
+        return ResponseEntity.ok(authService.updateProfile(user, request));
+    }
+
+    @PutMapping("/password")
+    public ResponseEntity<Map<String, String>> changePassword(
+            @AuthenticationPrincipal User user,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(user, request);
+        return ResponseEntity.ok(Map.of("message", "Password changed successfully."));
     }
 }

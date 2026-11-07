@@ -1,8 +1,6 @@
 package com.campusconnect.auth.service;
 
-import com.campusconnect.auth.dto.AuthResponse;
-import com.campusconnect.auth.dto.LoginRequest;
-import com.campusconnect.auth.dto.RegisterRequest;
+import com.campusconnect.auth.dto.*;
 import com.campusconnect.user.model.User;
 import com.campusconnect.user.model.Role;
 import com.campusconnect.user.repository.UserRepository;
@@ -32,9 +30,10 @@ public class AuthService {
                 .name(request.getName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                // Public registration never grants a privileged role. Event and
-                // super administrators must be provisioned through an authorized path.
                 .role(Role.PARTICIPANT)
+                .authProvider("LOCAL")
+                .status("APPROVED")
+                .isPlatformOperator(false)
                 .build();
 
         user = userRepository.save(user);
@@ -46,6 +45,11 @@ public class AuthService {
                 .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole())
+                .department(user.getDepartment())
+                .authProvider(user.getAuthProvider())
+                .status(user.getStatus())
+                .profileImageUrl(user.getProfileImageUrl())
+                .isPlatformOperator(user.getIsPlatformOperator())
                 .build();
     }
 
@@ -68,6 +72,60 @@ public class AuthService {
                 .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole())
+                .department(user.getDepartment())
+                .authProvider(user.getAuthProvider() != null ? user.getAuthProvider() : "LOCAL")
+                .status(user.getStatus() != null ? user.getStatus() : "APPROVED")
+                .profileImageUrl(user.getProfileImageUrl())
+                .isPlatformOperator(user.getIsPlatformOperator() != null && user.getIsPlatformOperator())
+                .build();
+    }
+
+    @Transactional
+    public UserDto updateProfile(User user, UpdateProfileRequest request) {
+        User existing = userRepository.findById(user.getId())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        if (request.getName() != null && !request.getName().trim().isEmpty()) {
+            existing.setName(request.getName().trim());
+        }
+        if (request.getDepartment() != null) {
+            existing.setDepartment(request.getDepartment().trim());
+        }
+        if (request.getProfileImageUrl() != null) {
+            existing.setProfileImageUrl(request.getProfileImageUrl().trim());
+        }
+        User saved = userRepository.save(existing);
+        return toDto(saved);
+    }
+
+    @Transactional
+    public void changePassword(User user, ChangePasswordRequest request) {
+        User existing = userRepository.findById(user.getId())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        
+        if ("GOOGLE".equalsIgnoreCase(existing.getAuthProvider())) {
+            throw new IllegalStateException("Google-authenticated accounts do not use a local password.");
+        }
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), existing.getPassword())) {
+            throw new IllegalArgumentException("Incorrect current password.");
+        }
+
+        existing.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(existing);
+    }
+
+    public UserDto toDto(User user) {
+        return UserDto.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .department(user.getDepartment())
+                .authProvider(user.getAuthProvider() != null ? user.getAuthProvider() : "LOCAL")
+                .status(user.getStatus() != null ? user.getStatus() : "APPROVED")
+                .profileImageUrl(user.getProfileImageUrl())
+                .isPlatformOperator(user.getIsPlatformOperator() != null && user.getIsPlatformOperator())
+                .createdAt(user.getCreatedAt())
                 .build();
     }
 }

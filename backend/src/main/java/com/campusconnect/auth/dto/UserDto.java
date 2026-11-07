@@ -15,4 +15,10 @@ public class UserDto {
     private String name;
     private String email;
     private Role role;
+    private String department;
+    private String authProvider;
+    private String status;
+    private String profileImageUrl;
+    private Boolean isPlatformOperator;
+    private java.time.LocalDateTime createdAt;
 }

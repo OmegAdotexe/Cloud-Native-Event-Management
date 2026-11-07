@@ -36,6 +36,24 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private Role role;
 
+    @Column(length = 255)
+    private String department;
+
+    @Builder.Default
+    @Column(name = "auth_provider", length = 50)
+    private String authProvider = "LOCAL";
+
+    @Builder.Default
+    @Column(length = 50)
+    private String status = "APPROVED";
+
+    @Column(name = "profile_image_url", length = 1000)
+    private String profileImageUrl;
+
+    @Builder.Default
+    @Column(name = "is_platform_operator")
+    private Boolean isPlatformOperator = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

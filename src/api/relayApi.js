@@ -55,6 +55,19 @@ async function authFetch(endpoint, options = {}) {
 // Events
 // ---------------------------------------------------------------------------
 
+export async function getPublicEvents(category) {
+  const url = category ? `/api/events/public?category=${category}` : "/api/events/public";
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to load public events");
+  return res.json();
+}
+
+export async function getCategoryStats() {
+  const res = await fetch("/api/events/categories/stats");
+  if (!res.ok) throw new Error("Failed to load category statistics");
+  return res.json();
+}
+
 export async function getEvents() {
   return authFetch("/api/events");
 }
@@ -174,6 +187,20 @@ export async function register(userData) {
 export async function getMe() {
   return authFetch("/api/auth/me", {
     method: "GET",
+  });
+}
+
+export async function updateProfile(data) {
+  return authFetch("/api/auth/profile", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function changePassword(data) {
+  return authFetch("/api/auth/password", {
+    method: "PUT",
+    body: JSON.stringify(data),
   });
 }
 

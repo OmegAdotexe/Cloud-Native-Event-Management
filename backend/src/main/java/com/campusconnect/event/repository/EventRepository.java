@@ -36,4 +36,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     
     @Query("SELECT COUNT(e) FROM Event e WHERE e.startTime > CURRENT_TIMESTAMP AND e.status != 'CANCELLED'")
     long countUpcomingEvents();
+
+    @Query("SELECT e.category, COUNT(e) FROM Event e WHERE e.status = :status GROUP BY e.category")
+    List<Object[]> countEventsByStatusGroupByCategory(@Param("status") EventStatus status);
 }

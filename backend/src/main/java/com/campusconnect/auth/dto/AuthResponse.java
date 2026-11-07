@@ -16,4 +16,9 @@ public class AuthResponse {
     private String name;
     private String email;
     private Role role;
+    private String department;
+    private String authProvider;
+    private String status;
+    private String profileImageUrl;
+    private Boolean isPlatformOperator;
 }

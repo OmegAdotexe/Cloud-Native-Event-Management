@@ -4,7 +4,7 @@ import {
   Radio, Calendar, Users, MapPin, Sparkles, ArrowRight,
   Code2, Music, Trophy, BookOpen, Star, QrCode, Bell,
   Shield, Cloud, ExternalLink, ChevronRight, Sun, Moon,
-  CheckCircle2, PlusCircle
+  CheckCircle2, PlusCircle, Github, Linkedin, Mail
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext.jsx";
 import { useTheme } from "../contexts/ThemeContext.jsx";
@@ -12,12 +12,12 @@ import * as relayApi from "../api/relayApi.js";
 import EventCard from "../components/EventCard.jsx";
 import { CURATED_EVENT_IMAGES, getEventCoverImage } from "../data/eventAssets.js";
 
-const CATEGORIES = [
-  { id: "WORKSHOP", name: "Technical & Hackathons", icon: Code2, count: "12 Events", bg: "var(--blue-light)", color: "var(--blue)" },
-  { id: "CULTURAL", name: "Cultural & Arts", icon: Music, count: "8 Events", bg: "var(--coral-light)", color: "var(--coral)" },
-  { id: "SPORTS", name: "Sports & Athletics", icon: Trophy, count: "6 Events", bg: "var(--teal-light)", color: "var(--teal)" },
-  { id: "SEMINAR", name: "Keynote Seminars", icon: BookOpen, count: "9 Events", bg: "var(--primary-light)", color: "var(--primary)" },
-  { id: "OTHER", name: "Campus Competitions", icon: Star, count: "5 Events", bg: "var(--amber-light)", color: "var(--amber)" },
+const CATEGORY_CONFIGS = [
+  { id: "WORKSHOP", name: "Technical & Hackathons", icon: Code2, bg: "var(--blue-light)", color: "var(--blue)" },
+  { id: "CULTURAL", name: "Cultural & Arts", icon: Music, bg: "var(--coral-light)", color: "var(--coral)" },
+  { id: "SPORTS", name: "Sports & Athletics", icon: Trophy, bg: "var(--teal-light)", color: "var(--teal)" },
+  { id: "SEMINAR", name: "Keynote Seminars", icon: BookOpen, bg: "var(--primary-light)", color: "var(--primary)" },
+  { id: "OTHER", name: "Campus Competitions", icon: Star, bg: "var(--amber-light)", color: "var(--amber)" },
 ];
 
 export default function LandingPage() {
@@ -25,18 +25,29 @@ export default function LandingPage() {
   const { user, role } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [events, setEvents] = useState([]);
+  const [categoryStats, setCategoryStats] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("ALL");
 
   useEffect(() => {
-    relayApi.getEvents()
+    setIsLoading(true);
+    // Fetch live public events from backend database
+    relayApi.getPublicEvents()
       .then((data) => {
         setEvents(data || []);
       })
-      .catch(() => {
-        setEvents([]);
+      .catch((err) => {
+        console.warn("Public events fetch failed, attempting authenticated fallback:", err);
+        relayApi.getEvents().then(setEvents).catch(() => setEvents([]));
       })
-      .finally(() => setIsLoading.false);
+      .finally(() => setIsLoading(false));
+
+    // Fetch authoritative category statistics from backend
+    relayApi.getCategoryStats()
+      .then((stats) => {
+        if (stats) setCategoryStats(stats);
+      })
+      .catch((err) => console.warn("Failed to load category statistics:", err));
   }, []);
 
   const handleExploreClick = () => {
@@ -60,6 +71,15 @@ export default function LandingPage() {
       navigate("/login");
     }
   };
+
+  // Compute live category statistics dynamically
+  const categories = CATEGORY_CONFIGS.map(cat => {
+    const count = categoryStats[cat.id] ?? 0;
+    return {
+      ...cat,
+      count: `${count} Event${count === 1 ? "" : "s"}`,
+    };
+  });
 
   // Filter events by selected category
   const displayedEvents = events.filter((e) => {
@@ -191,7 +211,7 @@ export default function LandingPage() {
         </div>
 
         <div className="cc-categories-grid">
-          {CATEGORIES.map((cat) => {
+          {categories.map((cat) => {
             const Icon = cat.icon;
             const isSelected = activeCategory === cat.id;
             return (
@@ -246,50 +266,30 @@ export default function LandingPage() {
             ))}
           </div>
         ) : (
-          /* High-fidelity fallback cards if no events exist yet */
-          <div className="cc-events-grid">
-            <EventCard
-              event={{
-                id: "showcase-1",
-                title: "Cloud Native Hackathon 2026",
-                category: "WORKSHOP",
-                venueName: "Auditorium Hall A",
-                startTime: new Date(Date.now() + 86400000 * 3).toISOString(),
-                capacity: 120,
-                status: "PUBLISHED",
-                createdByName: "Google Developer Student Club",
-              }}
-              variant="rich"
-              onClick={() => (user ? navigate("/events") : navigate("/login"))}
-            />
-            <EventCard
-              event={{
-                id: "showcase-2",
-                title: "Inter-College Cultural Symphony & Rock Fest",
-                category: "CULTURAL",
-                venueName: "Open Air Amphitheatre",
-                startTime: new Date(Date.now() + 86400000 * 6).toISOString(),
-                capacity: 500,
-                status: "PUBLISHED",
-                createdByName: "Music & Arts Society",
-              }}
-              variant="rich"
-              onClick={() => (user ? navigate("/events") : navigate("/login"))}
-            />
-            <EventCard
-              event={{
-                id: "showcase-3",
-                title: "Annual University Basketball League Finals",
-                category: "SPORTS",
-                venueName: "Indoor Sports Complex",
-                startTime: new Date(Date.now() + 86400000 * 8).toISOString(),
-                capacity: 350,
-                status: "PUBLISHED",
-                createdByName: "Sports Committee",
-              }}
-              variant="rich"
-              onClick={() => (user ? navigate("/events") : navigate("/login"))}
-            />
+          <div style={{
+            padding: "54px 24px",
+            textAlign: "center",
+            background: "var(--surface)",
+            borderRadius: "20px",
+            border: "1px dashed var(--border)",
+            margin: "20px 0"
+          }}>
+            <Calendar size={38} style={{ color: "var(--mute)", margin: "0 auto 14px" }} />
+            <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--text)", margin: 0 }}>
+              No Events Found in this Category
+            </h3>
+            <p style={{ fontSize: "13px", color: "var(--mute)", margin: "6px 0 18px", maxWidth: "420px", marginLeft: "auto", marginRight: "auto" }}>
+              There are currently no active public events published in {activeCategory === "ALL" ? "the university" : activeCategory}. Check back soon or view all campus categories.
+            </p>
+            {activeCategory !== "ALL" && (
+              <button 
+                type="button"
+                className="relay-btn-ghost relay-btn-sm" 
+                onClick={() => setActiveCategory("ALL")}
+              >
+                Browse All Categories
+              </button>
+            )}
           </div>
         )}
       </section>
@@ -347,6 +347,109 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Meet the Developers ─────────────────────────────────── */}
+      <section id="developers-section" className="cc-section" style={{ borderTop: "1px solid var(--border-light)" }}>
+        <div className="cc-section-header">
+          <div className="cc-section-pill">Engineering Team</div>
+          <h2 className="cc-section-heading">Meet the Developers</h2>
+          <p className="cc-section-subheading">
+            The software engineers behind CampusConnect's cloud-native architecture, distributed messaging, and intuitive university experience.
+          </p>
+        </div>
+
+        <div className="cc-dev-grid">
+          {/* Aditya Bansal */}
+          <div className="cc-dev-card">
+            <div className="cc-dev-avatar" style={{ background: "linear-gradient(135deg, #6C3BEE, #A78BFA)" }}>
+              AB
+            </div>
+            <div className="cc-dev-name">Aditya Bansal</div>
+            <div className="cc-dev-role">Full-Stack Cloud Architect & Lead Developer</div>
+            <p className="cc-dev-bio">
+              Led the microservice and event-driven architecture, designing Spring Boot core APIs, PostgreSQL schema optimization, and AWS production infrastructure deployment.
+            </p>
+            <div className="cc-dev-tags">
+              <span className="cc-dev-tag">Spring Boot</span>
+              <span className="cc-dev-tag">AWS EC2 / S3</span>
+              <span className="cc-dev-tag">PostgreSQL</span>
+              <span className="cc-dev-tag">RabbitMQ</span>
+              <span className="cc-dev-tag">Architecture</span>
+            </div>
+            <div className="cc-dev-links">
+              <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="cc-dev-link-btn" title="GitHub Profile">
+                <Github size={16} />
+              </a>
+              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="cc-dev-link-btn" title="LinkedIn Profile">
+                <Linkedin size={16} />
+              </a>
+              <a href="mailto:contact@campusconnect.edu" className="cc-dev-link-btn" title="Contact Email">
+                <Mail size={16} />
+              </a>
+            </div>
+          </div>
+
+          {/* Tanshi */}
+          <div className="cc-dev-card">
+            <div className="cc-dev-avatar" style={{ background: "linear-gradient(135deg, #EC4899, #F472B6)" }}>
+              T
+            </div>
+            <div className="cc-dev-name">Tanshi</div>
+            <div className="cc-dev-role">Frontend & UI/UX Experience Lead</div>
+            <p className="cc-dev-bio">
+              Architected the modern React interface, responsive navigation systems, dynamic event directory filters, and accessible component library.
+            </p>
+            <div className="cc-dev-tags">
+              <span className="cc-dev-tag">React.js</span>
+              <span className="cc-dev-tag">UI/UX Design</span>
+              <span className="cc-dev-tag">Responsive Layouts</span>
+              <span className="cc-dev-tag">Design Systems</span>
+              <span className="cc-dev-tag">Vite</span>
+            </div>
+            <div className="cc-dev-links">
+              <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="cc-dev-link-btn" title="GitHub Profile">
+                <Github size={16} />
+              </a>
+              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="cc-dev-link-btn" title="LinkedIn Profile">
+                <Linkedin size={16} />
+              </a>
+              <a href="mailto:contact@campusconnect.edu" className="cc-dev-link-btn" title="Contact Email">
+                <Mail size={16} />
+              </a>
+            </div>
+          </div>
+
+          {/* Ishaan Prabhakar */}
+          <div className="cc-dev-card">
+            <div className="cc-dev-avatar" style={{ background: "linear-gradient(135deg, #0EA5E9, #38BDF8)" }}>
+              IP
+            </div>
+            <div className="cc-dev-name">Ishaan Prabhakar</div>
+            <div className="cc-dev-role">Backend Systems & DevOps Engineer</div>
+            <p className="cc-dev-bio">
+              Engineered containerization workflows, robust database migrations, reverse proxy routing with Nginx, and real-time notification pipelines for approval workflows.
+            </p>
+            <div className="cc-dev-tags">
+              <span className="cc-dev-tag">Docker</span>
+              <span className="cc-dev-tag">Nginx</span>
+              <span className="cc-dev-tag">DevOps CI/CD</span>
+              <span className="cc-dev-tag">API Security</span>
+              <span className="cc-dev-tag">Event Queues</span>
+            </div>
+            <div className="cc-dev-links">
+              <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="cc-dev-link-btn" title="GitHub Profile">
+                <Github size={16} />
+              </a>
+              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="cc-dev-link-btn" title="LinkedIn Profile">
+                <Linkedin size={16} />
+              </a>
+              <a href="mailto:contact@campusconnect.edu" className="cc-dev-link-btn" title="Contact Email">
+                <Mail size={16} />
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── Footer ─────────────────────────────────────────────── */}
       <footer id="about-section" className="cc-footer">
         <div className="cc-footer-inner">
@@ -368,6 +471,7 @@ export default function LandingPage() {
               <li><a href="#events-section">All Events</a></li>
               <li><a href="#categories-section">Categories</a></li>
               <li><a href="#features-section">Platform Features</a></li>
+              <li><a href="#developers-section">Engineering Team</a></li>
               <li><Link to="/login">Sign In</Link></li>
             </ul>
           </div>

@@ -31,6 +31,16 @@ public class EventController {
         return ResponseEntity.status(HttpStatus.CREATED).body(eventService.createEvent(request, user));
     }
 
+    @GetMapping("/public")
+    public ResponseEntity<List<EventResponse>> getPublicEvents(@RequestParam(required = false) EventCategory category) {
+        return ResponseEntity.ok(eventService.getPublishedEvents(category));
+    }
+
+    @GetMapping("/categories/stats")
+    public ResponseEntity<java.util.Map<String, Long>> getCategoryStats() {
+        return ResponseEntity.ok(eventService.getCategoryStats());
+    }
+
     @GetMapping
     public ResponseEntity<List<EventResponse>> getAll(@RequestParam(required = false) EventCategory category,
                                                       @AuthenticationPrincipal User user) {

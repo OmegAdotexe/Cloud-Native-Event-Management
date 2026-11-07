@@ -8,7 +8,7 @@ import {
   LogOut,
   Bell,
   Calendar,
-  Clock,
+  Globe,
   Settings,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext.jsx";
@@ -22,8 +22,7 @@ const ROLE_DISPLAY = {
 };
 
 /**
- * Sidebar — logo, user info, navigation, and logout.
- * Reads role from AuthContext.
+ * Sidebar — CampusConnect logo, user role info, navigation, and logout.
  */
 export default function Sidebar() {
   const { user, role, logout } = useAuth();
@@ -37,7 +36,7 @@ export default function Sidebar() {
         .then(res => setUnreadCount(res.count))
         .catch(err => console.error("Failed to load notifications", err));
     }
-  }, [user, location.pathname]); // Refresh count on navigation
+  }, [user, location.pathname]);
 
   const handleLogout = async () => {
     await logout();
@@ -45,23 +44,22 @@ export default function Sidebar() {
   };
 
   const display = ROLE_DISPLAY[role] || ROLE_DISPLAY.PARTICIPANT;
-  const Icon = display.icon;
 
   return (
     <div className="relay-side">
-      {/* Logo */}
-      <div className="relay-logo">
+      {/* Brand Logo */}
+      <div className="relay-logo" style={{ cursor: "pointer" }} onClick={() => navigate("/")}>
         <div className="relay-logo-mark">
-          <Radio size={16} color="#fff" />
+          <Radio size={17} color="#fff" />
         </div>
         <div>
-          <div className="relay-logo-text relay-display">Relay</div>
-          <div className="relay-logo-sub">Campus Events Platform</div>
+          <div className="relay-logo-text" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>CampusConnect</div>
+          <div className="relay-logo-sub">Cloud Event Platform</div>
         </div>
       </div>
 
       {/* Main navigation */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
         <div
           className={`relay-nav-item ${location.pathname === '/' ? 'active' : ''}`}
           onClick={() => navigate("/")}
@@ -75,7 +73,7 @@ export default function Sidebar() {
           onClick={() => navigate("/events")}
         >
           <Calendar size={16} />
-          Events
+          Events Directory
         </div>
 
         {role === "PARTICIPANT" && (
@@ -99,9 +97,9 @@ export default function Sidebar() {
           </div>
           {unreadCount > 0 && (
             <div style={{
-              background: "#E55A4F",
+              background: "var(--coral)",
               color: "#fff",
-              fontSize: "10px",
+              fontSize: "10.5px",
               fontWeight: "bold",
               padding: "2px 7px",
               borderRadius: "10px",
@@ -112,6 +110,14 @@ export default function Sidebar() {
             </div>
           )}
         </div>
+
+        <div
+          className={`relay-nav-item ${location.pathname === '/landing' ? 'active' : ''}`}
+          onClick={() => navigate("/landing")}
+        >
+          <Globe size={16} />
+          Explore Portal
+        </div>
       </div>
 
       {/* Spacer pushes bottom items down */}
@@ -120,18 +126,30 @@ export default function Sidebar() {
       {/* Bottom section */}
       <div className="relay-nav-separator" />
 
-      <div className="relay-nav-item" onClick={() => {}} style={{ opacity: 0.6, cursor: "default" }}>
-        <Settings size={16} />
-        Settings
+      {/* User Card Pill */}
+      <div style={{
+        padding: "10px 12px",
+        borderRadius: "10px",
+        background: "rgba(255, 255, 255, 0.04)",
+        border: "1px solid rgba(255, 255, 255, 0.08)",
+        marginBottom: "6px"
+      }}>
+        <div style={{ fontSize: "12px", fontWeight: 600, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {user?.name || "User"}
+        </div>
+        <div style={{ fontSize: "11px", color: "var(--accent)", marginTop: "2px" }}>
+          {display.label}
+        </div>
       </div>
 
       <button
+        type="button"
         className="relay-nav-item"
         onClick={handleLogout}
         style={{ background: "transparent", border: "none", cursor: "pointer", width: "100%", textAlign: "left", fontFamily: "inherit", fontSize: "13px" }}
       >
         <LogOut size={16} />
-        Logout
+        Log Out
       </button>
     </div>
   );

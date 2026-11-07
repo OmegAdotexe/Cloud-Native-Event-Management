@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext.jsx";
-import { Radio } from "lucide-react";
+import { Radio, ArrowLeft, Sparkles, CheckCircle2 } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -29,20 +29,26 @@ export default function LoginPage() {
   return (
     <div className="relay-auth-page">
       <div className="relay-auth-card">
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "24px" }}>
-          <div style={{
-            width: "34px", height: "34px", borderRadius: "9px",
-            background: "linear-gradient(135deg, #E8943A, #D47A20)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 2px 8px rgba(232, 148, 58, 0.3)"
-          }}>
-            <Radio size={16} color="#fff" />
+        {/* Brand Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div className="cc-brand-icon">
+              <Radio size={18} color="#fff" />
+            </div>
+            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: "19px", color: "var(--text)" }}>
+              CampusConnect
+            </span>
           </div>
-          <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: "18px", color: "var(--text)" }}>Relay</span>
+
+          <Link to="/landing" style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "var(--mute)", textDecoration: "none" }}>
+            <ArrowLeft size={13} /> Home
+          </Link>
         </div>
 
         <h1>Welcome back</h1>
-        <p style={{ color: "var(--mute)", fontSize: "13.5px", marginBottom: "28px" }}>Log in to your account to continue</p>
+        <p style={{ color: "var(--mute)", fontSize: "13.5px", marginBottom: "26px" }}>
+          Sign in to your campus account to access events and passes.
+        </p>
 
         {(error || localError) && (
           <div className="relay-auth-error">
@@ -52,7 +58,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: "18px" }}>
-            <label className="relay-field-label">Email</label>
+            <label className="relay-field-label">University Email</label>
             <input
               type="email"
               className="relay-auth-input"
@@ -62,7 +68,7 @@ export default function LoginPage() {
               required
             />
           </div>
-          <div style={{ marginBottom: "28px" }}>
+          <div style={{ marginBottom: "26px" }}>
             <label className="relay-field-label">Password</label>
             <input
               type="password"
@@ -73,20 +79,27 @@ export default function LoginPage() {
               required
             />
           </div>
-          <button type="submit" className="relay-btn" style={{ width: "100%", justifyContent: "center", padding: "12px", background: "#4A7BF7", color: "#FFFFFF", borderRadius: "9px", border: "none", fontWeight: 600 }} disabled={loading}>
-            {loading ? "Logging in..." : "Log In"}
+          <button
+            type="submit"
+            className="cc-btn-primary"
+            style={{ width: "100%", justifyContent: "center", padding: "12px", borderRadius: "10px" }}
+            disabled={loading}
+          >
+            {loading ? "Signing in..." : "Sign In to CampusConnect"}
           </button>
         </form>
 
-        <div style={{ marginTop: "20px", padding: "12px 14px", background: "var(--bg)", borderRadius: "10px", border: "1px solid var(--border)" }}>
-          <div style={{ fontSize: "11px", textTransform: "uppercase", fontWeight: 700, color: "var(--mute)", letterSpacing: "0.5px", marginBottom: "8px" }}>
-            Quick Demo Logins
+        {/* Quick Demo Credentials */}
+        <div style={{ marginTop: "22px", padding: "14px 16px", background: "var(--bg)", borderRadius: "12px", border: "1px solid var(--border)" }}>
+          <div style={{ fontSize: "11px", textTransform: "uppercase", fontWeight: 700, color: "var(--primary)", letterSpacing: "0.06em", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+            <Sparkles size={12} />
+            <span>Instant Demo Accounts</span>
           </div>
-          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
             <button
               type="button"
               className="relay-btn-ghost relay-btn-sm"
-              style={{ fontSize: "12px", padding: "4px 8px" }}
+              style={{ fontSize: "12px", padding: "5px 10px", borderRadius: "8px", background: "var(--surface)" }}
               onClick={() => { setEmail("participant@example.com"); setPassword("password"); }}
             >
               Participant
@@ -94,7 +107,7 @@ export default function LoginPage() {
             <button
               type="button"
               className="relay-btn-ghost relay-btn-sm"
-              style={{ fontSize: "12px", padding: "4px 8px" }}
+              style={{ fontSize: "12px", padding: "5px 10px", borderRadius: "8px", background: "var(--surface)" }}
               onClick={() => { setEmail("admin@example.com"); setPassword("password"); }}
             >
               Event Admin
@@ -102,7 +115,7 @@ export default function LoginPage() {
             <button
               type="button"
               className="relay-btn-ghost relay-btn-sm"
-              style={{ fontSize: "12px", padding: "4px 8px" }}
+              style={{ fontSize: "12px", padding: "5px 10px", borderRadius: "8px", background: "var(--surface)" }}
               onClick={() => { setEmail("superadmin@example.com"); setPassword("password"); }}
             >
               Super Admin
@@ -111,7 +124,7 @@ export default function LoginPage() {
         </div>
 
         <p style={{ marginTop: "20px", fontSize: "13px", textAlign: "center", color: "var(--mute)" }}>
-          Don't have an account? <Link to="/register" style={{ color: "var(--amber)", textDecoration: "none", fontWeight: 600 }}>Sign up</Link>
+          New student or club lead? <Link to="/register" style={{ color: "var(--primary)", textDecoration: "none", fontWeight: 600 }}>Create an account</Link>
         </p>
       </div>
     </div>

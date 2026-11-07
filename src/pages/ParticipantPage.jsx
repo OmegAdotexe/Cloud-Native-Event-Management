@@ -2,384 +2,372 @@ import React, { useState, useEffect } from "react";
 import {
   CalendarClock, MapPin, Calendar, Users, Clock, Bell,
   ArrowUpRight, ChevronRight, Code2, Music, Trophy, BookOpen, Star,
-  CheckCircle2, AlertCircle, Info, XCircle, BellRing
+  CheckCircle2, AlertCircle, Info, XCircle, BellRing, Sparkles, QrCode
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext.jsx";
 import { useNavigate } from "react-router-dom";
 import * as relayApi from "../api/relayApi.js";
+import EventCard from "../components/EventCard.jsx";
+import TicketModal from "../components/TicketModal.jsx";
+import { getEventCoverImage, handleImageError } from "../data/eventAssets.js";
 
 const CATEGORY_CONFIG = {
-  WORKSHOP: { icon: <Code2 size={18} />, bg: "#EBF0FE", label: "Workshop" },
-  SEMINAR: { icon: <BookOpen size={18} />, bg: "#F0ECFE", label: "Seminar" },
-  CULTURAL: { icon: <Music size={18} />, bg: "#FDE8E7", label: "Cultural" },
-  SPORTS: { icon: <Trophy size={18} />, bg: "#E6F7F2", label: "Sports" },
-  OTHER: { icon: <Star size={18} />, bg: "#F0EDE8", label: "Other" },
+  WORKSHOP: { icon: <Code2 size={16} />, bg: "var(--blue-light)", color: "var(--blue)", label: "Workshop" },
+  SEMINAR: { icon: <BookOpen size={16} />, bg: "var(--primary-light)", color: "var(--primary)", label: "Seminar" },
+  CULTURAL: { icon: <Music size={16} />, bg: "var(--coral-light)", color: "var(--coral)", label: "Cultural" },
+  SPORTS: { icon: <Trophy size={16} />, bg: "var(--teal-light)", color: "var(--teal)", label: "Sports" },
+  OTHER: { icon: <Star size={16} />, bg: "var(--amber-light)", color: "var(--amber)", label: "Other" },
 };
-
-const NOTIF_ICONS = {
-  REGISTRATION_CONFIRMED: { icon: <CheckCircle2 size={16} />, bg: "#E6F7F2", color: "#2AAB8A" },
-  REGISTRATION_WAITLISTED: { icon: <CalendarClock size={16} />, bg: "#FFF4E6", color: "#E8943A" },
-  REGISTRATION_REJECTED: { icon: <XCircle size={16} />, bg: "#FDE8E7", color: "#E55A4F" },
-  REGISTRATION_CANCELLED: { icon: <XCircle size={16} />, bg: "#FDE8E7", color: "#E55A4F" },
-  REGISTRATION_PENDING: { icon: <Info size={16} />, bg: "#FFF4E6", color: "#E8943A" },
-  EVENT_PUBLISHED: { icon: <BellRing size={16} />, bg: "#F0ECFE", color: "#7C5CFC" },
-  EVENT_CANCELLED: { icon: <XCircle size={16} />, bg: "#FDE8E7", color: "#E55A4F" },
-  EVENT_VENUE_CHANGED: { icon: <AlertCircle size={16} />, bg: "#EBF0FE", color: "#4A7BF7" },
-  EVENT_TIME_CHANGED: { icon: <Info size={16} />, bg: "#EBF0FE", color: "#4A7BF7" },
-  EVENT_UPDATED: { icon: <Info size={16} />, bg: "#EBF0FE", color: "#4A7BF7" },
-  TIMELINE_UPDATED: { icon: <CalendarClock size={16} />, bg: "#EBF0FE", color: "#4A7BF7" },
-};
-
-function getStatusPillClass(status) {
-  return status?.toLowerCase().replace(/_/g, '-') || 'pending';
-}
-
-function getEventStatusInfo(event, registration) {
-  if (registration) {
-    if (registration.status === 'CONFIRMED') return { label: "Registered", class: "registered" };
-    if (registration.status === 'WAITLISTED') return { label: "Waitlisted", class: "waitlisted" };
-    if (registration.status === 'PENDING') return { label: "Pending", class: "pending" };
-    if (registration.status === 'CANCELLED') return { label: "Cancelled", class: "cancelled" };
-    if (registration.status === 'REJECTED') return { label: "Rejected", class: "rejected" };
-  }
-
-  const deadline = event.registrationDeadline ? new Date(event.registrationDeadline) : null;
-  const now = new Date();
-
-  if (deadline && deadline < now) return { label: "Closed", class: "cancelled" };
-
-  if (deadline) {
-    const diffDays = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
-    if (diffDays <= 5) return { label: `Ends in ${diffDays} day${diffDays > 1 ? 's' : ''}`, class: "ends-soon" };
-    return { label: "Registration Open", class: "registration-open" };
-  }
-
-  return { label: "Open", class: "open" };
-}
-
-function timeAgo(dateString) {
-  const now = new Date();
-  const date = new Date(dateString);
-  const seconds = Math.floor((now - date) / 1000);
-
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
 
 function formatEventDate(dateString) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  if (!dateString) return "TBD";
+  return new Date(dateString).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 function formatEventTime(dateString) {
-  const date = new Date(dateString);
-  return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  if (!dateString) return "";
+  return new Date(dateString).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 }
 
-export default function ParticipantPage({ events, isLoading, error }) {
+export default function ParticipantPage({ events = [], isLoading, error }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [registrations, setRegistrations] = useState([]);
   const [notifications, setNotifications] = useState([]);
-  const [actionLoading, setActionLoading] = useState(false);
-
-  const fetchRegistrations = async () => {
-    try {
-      const data = await relayApi.getMyRegistrations();
-      setRegistrations(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const fetchNotifications = async () => {
-    try {
-      const pageData = await relayApi.getNotifications(0, 5);
-      setNotifications(pageData.content || []);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [activeTab, setActiveTab] = useState("UPCOMING"); // "UPCOMING" or "HISTORY"
 
   useEffect(() => {
-    fetchRegistrations();
-    fetchNotifications();
+    relayApi.getMyRegistrations()
+      .then(data => setRegistrations(data || []))
+      .catch(() => setRegistrations([]));
+
+    relayApi.getNotifications(0, 5)
+      .then(res => setNotifications(res?.content || []))
+      .catch(() => setNotifications([]));
   }, []);
 
-  const handleRegister = async (eventId) => {
-    setActionLoading(true);
-    try {
-      await relayApi.registerForEvent(eventId);
-      await fetchRegistrations();
-    } catch (err) {
-      alert(err.message || "Failed to register");
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleCancel = async (eventId, registrationId) => {
-    setActionLoading(true);
-    try {
-      await relayApi.cancelRegistration(eventId, registrationId);
-      await fetchRegistrations();
-    } catch (err) {
-      alert(err.message || "Failed to cancel");
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Computed stats
-  const totalEvents = events.length;
-  const myRegs = registrations.length;
-  const upcomingEvents = events.filter(e => new Date(e.startTime) > new Date()).length;
-  const unreadNotifs = notifications.filter(n => !n.isRead).length;
-
-  // Upcoming events (future events, max 5)
-  const upcoming = events
-    .filter(e => new Date(e.startTime) > new Date())
-    .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
-    .slice(0, 5);
-
-  // Current date display
   const now = new Date();
-  const dateStr = now.toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  const nowMs = now.getTime();
 
-  return <>
-    <div className="relay-body">
-      {/* Welcome Banner */}
-      <div className="relay-welcome">
-        <div>
-          <h1>Welcome back, {user?.name?.split(" ")[0] || "there"} <span style={{ cursor: "pointer" }}>›</span></h1>
-          <p>Discover events, manage your registrations, and stay updated.</p>
-        </div>
-        <div className="relay-welcome-right">
-          <div className="date">{dateStr}</div>
-          <div>Good to see you again!</div>
-        </div>
-      </div>
+  // Registered events
+  const registeredEvents = events.filter(e => 
+    registrations.some(r => String(r.eventId) === String(e.id) && r.status === "CONFIRMED")
+  );
 
-      {/* Stats Grid */}
-      <div className="relay-stat-grid">
-        <div className="relay-stat-card">
-          <div className="relay-stat-icon amber"><Calendar size={20} /></div>
-          <div>
-            <div className="relay-stat-num">{totalEvents}</div>
-            <div className="relay-stat-label">Total Events</div>
-          </div>
-        </div>
-        <div className="relay-stat-card">
-          <div className="relay-stat-icon blue"><Users size={20} /></div>
-          <div>
-            <div className="relay-stat-num">{myRegs}</div>
-            <div className="relay-stat-label">My Registrations</div>
-          </div>
-        </div>
-        <div className="relay-stat-card">
-          <div className="relay-stat-icon green"><Clock size={20} /></div>
-          <div>
-            <div className="relay-stat-num">{upcomingEvents}</div>
-            <div className="relay-stat-label">Upcoming Events</div>
-          </div>
-        </div>
-        <div className="relay-stat-card">
-          <div className="relay-stat-icon coral"><Bell size={20} /></div>
-          <div>
-            <div className="relay-stat-num">{unreadNotifs + notifications.length}</div>
-            <div className="relay-stat-label">Unread Notifications</div>
-          </div>
-        </div>
-      </div>
+  const upcomingRegistered = registeredEvents.filter(e => new Date(e.endTime || e.startTime).getTime() >= nowMs);
+  const pastRegistered = registeredEvents.filter(e => new Date(e.endTime || e.startTime).getTime() < nowMs);
 
-      {/* Main Dashboard Grid */}
-      <div className="relay-dashboard">
-        <div className="relay-dashboard-main">
-          {/* Upcoming Events */}
-          <div className="relay-card">
-            <div className="relay-section-header">
-              <div className="relay-section-title">
-                <Calendar size={16} /> Upcoming Events
+  // Recommended upcoming events (not registered yet)
+  const recommendedEvents = events
+    .filter(e => !registrations.some(r => String(r.eventId) === String(e.id)) && e.status === "PUBLISHED" && new Date(e.startTime).getTime() >= nowMs)
+    .slice(0, 3);
+
+  const dateStr = now.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" });
+
+  return (
+    <>
+      <div className="relay-body">
+        {/* ── Welcome Banner ─────────────────────────────────────── */}
+        <div className="relay-welcome" style={{ alignItems: "center", marginBottom: "24px" }}>
+          <div>
+            <h1 style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "26px" }}>
+              <span>Welcome back, {user?.name?.split(" ")[0] || "Student"}!</span>
+              <Sparkles size={20} color="var(--primary)" />
+            </h1>
+            <p>Track your passes, explore upcoming society workshops, and never miss a campus moment.</p>
+          </div>
+          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+            <div className="relay-welcome-right">
+              <div className="date">{dateStr}</div>
+              <div>Campus Hub is Active</div>
+            </div>
+            <button
+              type="button"
+              className="cc-btn-primary"
+              onClick={() => navigate("/events")}
+              style={{ padding: "9px 18px", fontSize: "13px" }}
+            >
+              Browse All Events
+            </button>
+          </div>
+        </div>
+
+        {/* ── KPI Stat Cards ─────────────────────────────────────── */}
+        <div className="relay-stat-grid" style={{ marginBottom: "28px" }}>
+          <div className="relay-stat-card">
+            <div className="relay-stat-icon purple"><Calendar size={20} /></div>
+            <div>
+              <div className="relay-stat-num">{events.length}</div>
+              <div className="relay-stat-label">Available Events</div>
+            </div>
+          </div>
+
+          <div className="relay-stat-card">
+            <div className="relay-stat-icon teal"><CheckCircle2 size={20} /></div>
+            <div>
+              <div className="relay-stat-num">{registrations.filter(r => r.status === "CONFIRMED").length}</div>
+              <div className="relay-stat-label">Active Event Passes</div>
+            </div>
+          </div>
+
+          <div className="relay-stat-card">
+            <div className="relay-stat-icon blue"><Clock size={20} /></div>
+            <div>
+              <div className="relay-stat-num">{upcomingRegistered.length}</div>
+              <div className="relay-stat-label">Upcoming This Week</div>
+            </div>
+          </div>
+
+          <div className="relay-stat-card">
+            <div className="relay-stat-icon amber"><Bell size={20} /></div>
+            <div>
+              <div className="relay-stat-num">{notifications.filter(n => !n.isRead).length}</div>
+              <div className="relay-stat-label">Unread Notifications</div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Main Dashboard Layout ──────────────────────────────── */}
+        <div className="relay-dashboard">
+          
+          {/* Main Content Column */}
+          <div className="relay-dashboard-main">
+            
+            {/* My Registrations & Passes Section */}
+            <div className="relay-card">
+              <div className="relay-section-header">
+                <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("UPCOMING")}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      fontSize: "15px",
+                      fontWeight: activeTab === "UPCOMING" ? 700 : 500,
+                      color: activeTab === "UPCOMING" ? "var(--primary)" : "var(--mute)",
+                      borderBottom: activeTab === "UPCOMING" ? "2px solid var(--primary)" : "none",
+                      paddingBottom: "6px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <CheckCircle2 size={16} /> My Confirmed Passes ({upcomingRegistered.length})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("HISTORY")}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      fontSize: "15px",
+                      fontWeight: activeTab === "HISTORY" ? 700 : 500,
+                      color: activeTab === "HISTORY" ? "var(--primary)" : "var(--mute)",
+                      borderBottom: activeTab === "HISTORY" ? "2px solid var(--primary)" : "none",
+                      paddingBottom: "6px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <Clock size={16} /> Attended History ({pastRegistered.length})
+                  </button>
+                </div>
+
+                <div
+                  className="relay-section-link"
+                  onClick={() => navigate("/my-registrations")}
+                  style={{ cursor: "pointer" }}
+                >
+                  View All <ChevronRight size={14} className="relay-chevron" />
+                </div>
               </div>
-              <div className="relay-section-link" onClick={() => {}}>
-                View All <ChevronRight size={14} className="relay-chevron" />
-              </div>
+
+              {activeTab === "UPCOMING" ? (
+                upcomingRegistered.length === 0 ? (
+                  <div className="relay-empty" style={{ padding: "36px 0" }}>
+                    <CalendarClock size={32} style={{ color: "var(--mute)", margin: "0 auto 10px" }} />
+                    <div style={{ fontWeight: 600, color: "var(--text)" }}>No upcoming registrations</div>
+                    <p style={{ color: "var(--mute)", fontSize: "12.5px", marginTop: "4px" }}>
+                      You haven't registered for any upcoming events yet. Check out recommended events below!
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {upcomingRegistered.map(event => {
+                      const reg = registrations.find(r => String(r.eventId) === String(event.id));
+                      const cover = getEventCoverImage(event);
+                      return (
+                        <div
+                          key={event.id}
+                          className="relay-event-row"
+                          onClick={() => navigate(`/event/${event.id}`)}
+                          style={{ padding: "12px 14px", borderRadius: "12px", border: "1px solid var(--border-light)" }}
+                        >
+                          <img
+                            src={cover}
+                            alt={event.title}
+                            onError={handleImageError}
+                            style={{ width: "50px", height: "50px", borderRadius: "10px", objectFit: "cover", flexShrink: 0 }}
+                          />
+                          <div className="relay-event-info">
+                            <div className="relay-event-title">{event.title}</div>
+                            <div className="relay-event-details">
+                              <span><CalendarClock size={12} /> {formatEventDate(event.startTime)}</span>
+                              <span><Clock size={12} /> {formatEventTime(event.startTime)}</span>
+                              <span><MapPin size={12} /> {event.isVirtual ? "Virtual" : event.venueName}</span>
+                            </div>
+                          </div>
+                          <div className="relay-event-actions">
+                            <button
+                              type="button"
+                              className="relay-btn-ghost relay-btn-sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedTicket({
+                                  ...reg,
+                                  eventTitle: event.title,
+                                  eventVenue: event.isVirtual ? "Virtual" : event.venueName,
+                                  eventStartTime: event.startTime,
+                                  participantName: user?.name,
+                                  participantEmail: user?.email,
+                                });
+                              }}
+                              style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                            >
+                              <QrCode size={14} /> View Pass
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )
+              ) : (
+                /* History Tab */
+                pastRegistered.length === 0 ? (
+                  <div className="relay-empty" style={{ padding: "36px 0" }}>
+                    <p>No past event history recorded yet.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {pastRegistered.map(event => (
+                      <div key={event.id} className="relay-event-row" onClick={() => navigate(`/event/${event.id}`)}>
+                        <div className="relay-event-info">
+                          <div className="relay-event-title">{event.title}</div>
+                          <div className="relay-event-details">
+                            <span><CalendarClock size={12} /> {formatEventDate(event.startTime)}</span>
+                            <span><MapPin size={12} /> {event.isVirtual ? "Virtual" : event.venueName}</span>
+                          </div>
+                        </div>
+                        <span className="relay-status-pill" style={{ background: "var(--bg)", color: "var(--mute)" }}>
+                          Completed
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              )}
             </div>
 
-            {isLoading && <div className="relay-empty">Loading events...</div>}
-            {error && <div className="relay-empty">{error}</div>}
-            {!isLoading && !error && upcoming.length === 0 && <div className="relay-empty">No upcoming events.</div>}
-
-            {upcoming.map((event) => {
-              const reg = registrations.find(r => r.eventId === event.id);
-              const statusInfo = getEventStatusInfo(event, reg);
-              const category = CATEGORY_CONFIG[event.category] || CATEGORY_CONFIG.OTHER;
-              const isPastDeadline = event.registrationDeadline && new Date(event.registrationDeadline) < new Date();
-
-              return (
-                <div key={event.id} className="relay-event-row" style={{ cursor: "pointer" }} onClick={() => navigate(`/event/${event.id}`)}>
-                  <div className="relay-event-icon" style={{ background: category.bg }}>
-                    {category.icon}
+            {/* Recommended For You Section */}
+            {recommendedEvents.length > 0 && (
+              <div className="relay-card">
+                <div className="relay-section-header">
+                  <div className="relay-section-title">
+                    <Sparkles size={16} color="var(--primary)" /> Recommended Events
                   </div>
-                  <div className="relay-event-info">
-                    <div className="relay-event-title">{event.title}</div>
-                    <div className="relay-event-details">
-                      <span><CalendarClock size={12} /> {formatEventDate(event.startTime)}</span>
-                      <span><Clock size={12} /> {formatEventTime(event.startTime)}</span>
-                      <span><MapPin size={12} /> {event.isVirtual ? "Virtual" : event.venueName}</span>
-                    </div>
-                  </div>
-                  <div className="relay-event-actions">
-                    <span className={`relay-status-pill ${statusInfo.class}`}>
-                      {statusInfo.label}
-                    </span>
-                    {!reg && !isPastDeadline && (
-                      <button
-                        className="relay-btn-sm relay-btn"
-                        disabled={actionLoading}
-                        onClick={(e) => { e.stopPropagation(); handleRegister(event.id); }}
-                        style={{ fontSize: "11px", padding: "4px 10px" }}
-                      >
-                        Register
-                      </button>
-                    )}
-                    {reg && !['CANCELLED', 'REJECTED'].includes(reg.status) && (
-                      <button
-                        className="relay-btn-danger relay-btn-sm"
-                        disabled={actionLoading}
-                        onClick={(e) => { e.stopPropagation(); handleCancel(event.id, reg.id); }}
-                        style={{ fontSize: "11px", padding: "4px 10px" }}
-                      >
-                        Cancel
-                      </button>
-                    )}
-                    <ChevronRight size={16} style={{ color: "var(--mute)" }} />
+                  <div className="relay-section-link" onClick={() => navigate("/events")}>
+                    Browse More <ChevronRight size={14} className="relay-chevron" />
                   </div>
                 </div>
-              );
-            })}
-          </div>
 
-          {/* My Registrations Table */}
-          <div className="relay-card">
-            <div className="relay-section-header">
-              <div className="relay-section-title">
-                <Users size={16} /> My Registrations
+                <div className="cc-events-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))" }}>
+                  {recommendedEvents.map(event => (
+                    <EventCard
+                      key={event.id}
+                      event={event}
+                      variant="rich"
+                      onClick={() => navigate(`/event/${event.id}`)}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="relay-section-link" onClick={() => navigate("/my-registrations")}>
-                View All <ChevronRight size={14} className="relay-chevron" />
-              </div>
-            </div>
-
-            {registrations.length === 0 ? (
-              <div className="relay-empty">No registrations yet.</div>
-            ) : (
-              <table className="relay-reg-table">
-                <thead>
-                  <tr>
-                    <th>Event</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {registrations.slice(0, 5).map(reg => {
-                    const category = CATEGORY_CONFIG[reg.eventCategory] || CATEGORY_CONFIG.OTHER;
-                    return (
-                      <tr key={reg.id}>
-                        <td>
-                          <div className="relay-reg-event-cell">
-                            <div className="relay-reg-icon" style={{ background: category.bg }}>
-                              {category.icon ? React.cloneElement(category.icon, { size: 13 }) : <Star size={13} />}
-                            </div>
-                            <span style={{ fontWeight: 500 }}>{reg.eventTitle}</span>
-                          </div>
-                        </td>
-                        <td style={{ color: "var(--mute)", fontSize: "12.5px" }}>
-                          {formatEventDate(reg.eventStartTime || reg.registeredAt)}
-                        </td>
-                        <td>
-                          <span className={`relay-status-pill ${getStatusPillClass(reg.status)}`}>
-                            {reg.status}
-                          </span>
-                        </td>
-                        <td>
-                          <button
-                            className="relay-btn-view"
-                            onClick={() => navigate(`/event/${reg.eventId}`)}
-                          >
-                            View
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-
-        {/* Right sidebar: Notifications + CTA */}
-        <div className="relay-dashboard-side">
-          {/* Recent Notifications */}
-          <div className="relay-card">
-            <div className="relay-section-header">
-              <div className="relay-section-title">
-                <Bell size={16} /> Recent Notifications
-              </div>
-              <div className="relay-section-link" onClick={() => navigate("/notifications")}>
-                View All <ChevronRight size={14} className="relay-chevron" />
-              </div>
-            </div>
-
-            {notifications.length === 0 ? (
-              <div className="relay-empty">No notifications yet.</div>
-            ) : (
-              notifications.slice(0, 5).map(notif => {
-                const iconConfig = NOTIF_ICONS[notif.type] || NOTIF_ICONS.EVENT_UPDATED || { icon: <BellRing size={16} />, bg: "#F0EDE8", color: "#8B90A5" };
-                return (
-                  <div key={notif.id} className="relay-notif-item" style={{ cursor: "pointer" }} onClick={() => notif.eventId ? navigate(`/event/${notif.eventId}`) : navigate("/notifications")}>
-                    <div className="relay-notif-icon-circle" style={{ background: iconConfig.bg, color: iconConfig.color }}>
-                      {iconConfig.icon}
-                    </div>
-                    <div className="relay-notif-content">
-                      <div className="relay-notif-title">{notif.title}</div>
-                      <div className="relay-notif-message">{notif.message}</div>
-                    </div>
-                    <div className="relay-notif-time">{timeAgo(notif.createdAt)}</div>
-                  </div>
-                );
-              })
             )}
           </div>
 
-          {/* Browse Events CTA */}
-          <div className="relay-cta-card">
-            <div className="relay-cta-icon">
-              <Calendar size={22} />
+          {/* Right Sidebar Column: Notifications & Quick Access */}
+          <div className="relay-dashboard-side">
+            <div className="relay-card">
+              <div className="relay-section-header">
+                <div className="relay-section-title">
+                  <Bell size={16} /> Campus Alerts
+                </div>
+                <div className="relay-section-link" onClick={() => navigate("/notifications")}>
+                  All <ChevronRight size={14} className="relay-chevron" />
+                </div>
+              </div>
+
+              {notifications.length === 0 ? (
+                <div className="relay-empty" style={{ padding: "20px 0" }}>
+                  <Bell size={24} style={{ color: "var(--mute)", margin: "0 auto 8px" }} />
+                  <p style={{ fontSize: "12px" }}>No recent alerts.</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  {notifications.slice(0, 4).map(notif => (
+                    <div key={notif.id} style={{ display: "flex", gap: "10px", alignItems: "flex-start", paddingBottom: "10px", borderBottom: "1px solid var(--border-light)" }}>
+                      <div style={{
+                        width: "8px", height: "8px", borderRadius: "50%",
+                        background: notif.isRead ? "transparent" : "var(--primary)",
+                        marginTop: "6px", flexShrink: 0
+                      }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text)" }}>
+                          {notif.title || "Notification"}
+                        </div>
+                        <div style={{ fontSize: "11.5px", color: "var(--text-secondary)", lineHeight: 1.4, marginTop: "2px" }}>
+                          {notif.message}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="relay-cta-title">Find Your Next Event</div>
-            <div className="relay-cta-desc">
-              Explore a wide range of technical, cultural, and sports events.
-            </div>
-            <button className="relay-btn" onClick={() => {}}>
-              Browse Events <ArrowUpRight size={14} />
-            </button>
-            <div style={{ marginTop: "10px" }}>
-              <span className="relay-section-link" style={{ fontSize: "12px" }}>
-                View Event Calendar
-              </span>
+
+            {/* Quick Campus Links */}
+            <div className="relay-card">
+              <h4 style={{ fontSize: "13px", fontWeight: 700, color: "var(--text)", marginBottom: "10px" }}>
+                Student Resources
+              </h4>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "8px", fontSize: "12.5px" }}>
+                <li style={{ color: "var(--primary)", cursor: "pointer" }} onClick={() => navigate("/events")}>
+                  • Event Discovery Directory
+                </li>
+                <li style={{ color: "var(--primary)", cursor: "pointer" }} onClick={() => navigate("/my-registrations")}>
+                  • Download Attendance Pass
+                </li>
+                <li style={{ color: "var(--primary)", cursor: "pointer" }} onClick={() => navigate("/notifications")}>
+                  • Manage Email Alert Preferences
+                </li>
+              </ul>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  </>;
+
+      {selectedTicket && (
+        <TicketModal
+          registration={selectedTicket}
+          onClose={() => setSelectedTicket(null)}
+        />
+      )}
+    </>
+  );
 }

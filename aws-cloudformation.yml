@@ -338,3 +338,4 @@ Outputs:
   SSHCommand:
     Description: SSH command to connect to the server
     Value: !Sub "ssh -i invoice-app-mumbai.pem ubuntu@${EC2Instance.PublicIp}"
+

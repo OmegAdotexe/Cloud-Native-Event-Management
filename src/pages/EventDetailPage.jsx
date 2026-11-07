@@ -1,48 +1,30 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   CalendarClock, MapPin, Clock, Users, ArrowLeft,
   Code2, Music, Trophy, BookOpen, Star, Globe, Link2,
-  AlertCircle, CheckCircle2, XCircle, Info, Calendar, QrCode
+  AlertCircle, CheckCircle2, XCircle, Info, Calendar, QrCode,
+  Share2, Sparkles, Shield, ChevronRight
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext.jsx";
 import * as relayApi from "../api/relayApi.js";
 import TimelineDisplay from "../components/TimelineDisplay.jsx";
 import TicketModal from "../components/TicketModal.jsx";
+import EventCard from "../components/EventCard.jsx";
+import { getEventCoverImage, getEventGalleryImages, handleImageError } from "../data/eventAssets.js";
 
 const CATEGORY_CONFIG = {
-  WORKSHOP: { icon: <Code2 size={20} />, bg: "#EBF0FE", color: "#4A7BF7", label: "Workshop" },
-  SEMINAR: { icon: <BookOpen size={20} />, bg: "#F0ECFE", color: "#7C5CFC", label: "Seminar" },
-  CULTURAL: { icon: <Music size={20} />, bg: "#FDE8E7", color: "#E55A4F", label: "Cultural" },
-  SPORTS: { icon: <Trophy size={20} />, bg: "#E6F7F2", color: "#2AAB8A", label: "Sports" },
-  OTHER: { icon: <Star size={20} />, bg: "#F0EDE8", color: "#8B90A5", label: "Other" },
+  WORKSHOP: { icon: <Code2 size={18} />, bg: "var(--blue-light)", color: "var(--blue)", label: "Workshop & Tech" },
+  SEMINAR: { icon: <BookOpen size={18} />, bg: "var(--primary-light)", color: "var(--primary)", label: "Keynote Seminar" },
+  CULTURAL: { icon: <Music size={18} />, bg: "var(--coral-light)", color: "var(--coral)", label: "Cultural Fest" },
+  SPORTS: { icon: <Trophy size={18} />, bg: "var(--teal-light)", color: "var(--teal)", label: "Sports & Athletics" },
+  OTHER: { icon: <Star size={18} />, bg: "var(--amber-light)", color: "var(--amber)", label: "Campus Event" },
 };
-
-function getStatusStyle(status) {
-  switch (status) {
-    case 'CONFIRMED': return { bg: "#E6F7F2", color: "#1A8A6A", label: "Confirmed" };
-    case 'WAITLISTED': return { bg: "#FFF4E6", color: "#C77E1F", label: "Waitlisted" };
-    case 'PENDING': return { bg: "#F0ECFE", color: "#7C5CFC", label: "Pending Approval" };
-    case 'CANCELLED': return { bg: "#FDE8E7", color: "#C44035", label: "Cancelled" };
-    case 'REJECTED': return { bg: "#FDE8E7", color: "#C44035", label: "Rejected" };
-    default: return { bg: "#F0EDE8", color: "#8B90A5", label: status };
-  }
-}
-
-function getEventStatusStyle(status) {
-  switch (status) {
-    case 'PUBLISHED': return { bg: "#E6F7F2", color: "#1A8A6A", label: "Published" };
-    case 'DRAFT': return { bg: "#F0EDE8", color: "#8B90A5", label: "Draft" };
-    case 'CANCELLED': return { bg: "#FDE8E7", color: "#C44035", label: "Cancelled" };
-    case 'COMPLETED': return { bg: "#EBF0FE", color: "#4A7BF7", label: "Completed" };
-    default: return { bg: "#F0EDE8", color: "#8B90A5", label: status };
-  }
-}
 
 function formatDate(dateString) {
   if (!dateString) return "—";
   return new Date(dateString).toLocaleDateString("en-US", {
-    weekday: "short", month: "short", day: "numeric", year: "numeric"
+    weekday: "long", month: "short", day: "numeric", year: "numeric"
   });
 }
 
@@ -53,22 +35,19 @@ function formatTime(dateString) {
   });
 }
 
-function formatDateTime(dateString) {
-  if (!dateString) return "—";
-  return `${formatDate(dateString)} at ${formatTime(dateString)}`;
-}
-
 export default function EventDetailPage() {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
 
   const [event, setEvent] = useState(null);
+  const [allEvents, setAllEvents] = useState([]);
   const [registration, setRegistration] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -78,12 +57,14 @@ export default function EventDetailPage() {
     setIsLoading(true);
     setError("");
     try {
-      const [eventData, regsData] = await Promise.all([
+      const [eventData, regsData, eventsList] = await Promise.all([
         relayApi.getEventById(eventId),
         relayApi.getMyRegistrations(),
+        relayApi.getEvents().catch(() => []),
       ]);
       setEvent(eventData);
-      const myReg = regsData.find(r => String(r.eventId) === String(eventId));
+      setAllEvents(eventsList || []);
+      const myReg = (regsData || []).find(r => String(r.eventId) === String(eventId));
       setRegistration(myReg || null);
     } catch (err) {
       setError(err.message || "Failed to load event details.");
@@ -117,309 +98,349 @@ export default function EventDetailPage() {
     }
   };
 
+  const handleShare = () => {
+    navigator.clipboard?.writeText(window.location.href);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
+
   if (isLoading) {
     return (
-      <div className="relay-body">
-        <div className="relay-empty" style={{ marginTop: 40 }}>Loading event details...</div>
+      <div className="relay-body" style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "50vh" }}>
+        <div style={{ textAlign: "center" }}>
+          <div className="cc-brand-icon" style={{ width: "48px", height: "48px", margin: "0 auto 16px" }}>
+            <Calendar size={24} />
+          </div>
+          <div style={{ fontSize: "16px", fontWeight: 600, color: "var(--text)" }}>Loading event details...</div>
+        </div>
       </div>
     );
   }
 
   if (error || !event) {
     return (
-      <div className="relay-body">
-        <div style={{ marginTop: 20 }}>
-          <button className="relay-btn-ghost" onClick={() => navigate(-1)}>
-            <ArrowLeft size={16} /> Back
-          </button>
-        </div>
-        <div className="relay-empty" style={{ marginTop: 20, color: "var(--coral)" }}>
-          {error || "Event not found."}
+      <div className="relay-body" style={{ padding: "40px 28px" }}>
+        <button className="relay-btn-ghost" onClick={() => navigate(-1)} style={{ marginBottom: "20px" }}>
+          <ArrowLeft size={16} /> Back to Events
+        </button>
+        <div className="relay-card" style={{ textAlign: "center", padding: "40px" }}>
+          <AlertCircle size={36} color="var(--coral)" style={{ margin: "0 auto 12px" }} />
+          <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--text)", marginBottom: "6px" }}>Event Not Found</h3>
+          <p style={{ color: "var(--mute)", fontSize: "13.5px" }}>{error || "The requested campus event may have been removed or unpublished."}</p>
         </div>
       </div>
     );
   }
 
   const category = CATEGORY_CONFIG[event.category] || CATEGORY_CONFIG.OTHER;
-  const eventStatus = getEventStatusStyle(event.status);
+  const coverUrl = getEventCoverImage(event);
+  const galleryImages = getEventGalleryImages(event);
   const isPastDeadline = event.registrationDeadline && new Date(event.registrationDeadline) < new Date();
   const isPastEvent = new Date(event.endTime) < new Date();
   const canRegister = !registration && !isPastDeadline && !isPastEvent && event.status === "PUBLISHED";
   const canCancel = registration && ['PENDING', 'CONFIRMED', 'WAITLISTED'].includes(registration.status) && event.status === 'PUBLISHED';
 
+  // Related events in same category
+  const relatedEvents = allEvents
+    .filter(e => String(e.id) !== String(event.id) && (e.category === event.category || e.status === "PUBLISHED"))
+    .slice(0, 3);
+
   return (
     <>
-      {/* Back navigation */}
-      <div className="relay-body">
-        <div style={{ marginBottom: 20 }}>
+      <div className="relay-body" style={{ paddingBottom: "60px" }}>
+        {/* Navigation & Breadcrumb */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
           <button
+            type="button"
             className="relay-btn-ghost"
             onClick={() => navigate(-1)}
-            style={{ display: "flex", alignItems: "center", gap: 6 }}
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
           >
-            <ArrowLeft size={16} /> Back
+            <ArrowLeft size={15} /> All Events
+          </button>
+
+          <button
+            type="button"
+            className="relay-btn-ghost"
+            onClick={handleShare}
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12.5px" }}
+          >
+            <Share2 size={14} /> {copiedLink ? "Link Copied!" : "Share Event"}
           </button>
         </div>
 
-        {/* Event Header Card */}
-        <div className="relay-card" style={{ marginBottom: 20 }}>
-          <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
-            {/* Category Icon */}
-            <div style={{
-              width: 56, height: 56, borderRadius: 14,
-              background: category.bg, color: category.color,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              flexShrink: 0
-            }}>
-              {category.icon}
+        {/* ── Large Hero Cover Banner ─────────────────────────────── */}
+        <div style={{
+          position: "relative",
+          borderRadius: "24px",
+          overflow: "hidden",
+          boxShadow: "var(--shadow-md)",
+          border: "1px solid var(--border)",
+          height: "360px",
+          marginBottom: "28px",
+          background: "#141226",
+        }}>
+          <img
+            src={coverUrl}
+            alt={event.title}
+            onError={handleImageError}
+            style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.85 }}
+          />
+          {/* Gradient Overlay */}
+          <div style={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(to top, rgba(20, 18, 38, 0.95) 0%, rgba(20, 18, 38, 0.4) 60%, transparent 100%)",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-end",
+            padding: "32px 36px",
+            color: "#fff",
+          }}>
+            <div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "12px", flexWrap: "wrap" }}>
+              <span style={{
+                display: "inline-flex", alignItems: "center", gap: "6px",
+                background: "rgba(108, 59, 238, 0.9)", color: "#fff",
+                padding: "5px 12px", borderRadius: "10px", fontSize: "12px", fontWeight: 600,
+                backdropFilter: "blur(8px)"
+              }}>
+                {category.icon} {category.label}
+              </span>
+
+              <span style={{
+                background: event.status === "PUBLISHED" ? "rgba(16, 185, 129, 0.9)" : "rgba(107, 114, 128, 0.9)",
+                color: "#fff", padding: "5px 12px", borderRadius: "10px", fontSize: "12px", fontWeight: 600,
+                backdropFilter: "blur(8px)"
+              }}>
+                {event.status}
+              </span>
+
+              {event.isVirtual && (
+                <span style={{
+                  background: "rgba(59, 130, 246, 0.9)", color: "#fff",
+                  padding: "5px 12px", borderRadius: "10px", fontSize: "12px", fontWeight: 600,
+                  backdropFilter: "blur(8px)", display: "flex", alignItems: "center", gap: "4px"
+                }}>
+                  <Globe size={13} /> Virtual Event
+                </span>
+              )}
             </div>
 
-            {/* Title and Meta */}
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
-                <div>
-                  <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", margin: 0, lineHeight: 1.3 }}>
-                    {event.title}
-                  </h2>
-                  <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                    <span style={{
-                      padding: "3px 10px", borderRadius: 20, fontSize: 11.5, fontWeight: 600,
-                      background: category.bg, color: category.color
-                    }}>
-                      {category.label}
-                    </span>
-                    <span style={{
-                      padding: "3px 10px", borderRadius: 20, fontSize: 11.5, fontWeight: 600,
-                      background: eventStatus.bg, color: eventStatus.color
-                    }}>
-                      {eventStatus.label}
-                    </span>
-                    {event.registrationMode !== "OPEN" && (
-                      <span style={{
-                        padding: "3px 10px", borderRadius: 20, fontSize: 11.5, fontWeight: 600,
-                        background: "#F0ECFE", color: "#7C5CFC"
-                      }}>
-                        {event.registrationMode.replace(/_/g, " ")}
-                      </span>
-                    )}
-                  </div>
-                </div>
+            <h1 style={{ fontSize: "32px", fontWeight: 800, color: "#FFFFFF", margin: 0, lineHeight: 1.25, letterSpacing: "-0.02em" }}>
+              {event.title}
+            </h1>
 
-                {/* Registration Action */}
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  {registration && (
-                    <span style={{
-                      padding: "6px 16px", borderRadius: 20, fontSize: 12.5, fontWeight: 600,
-                      background: getStatusStyle(registration.status).bg,
-                      color: getStatusStyle(registration.status).color,
-                    }}>
-                      {getStatusStyle(registration.status).label}
-                    </span>
-                  )}
-                  {registration && registration.status === 'CONFIRMED' && (
-                    <button
-                      type="button"
-                      className="relay-btn-ghost"
-                      style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-                      onClick={() => setShowTicketModal(true)}
-                    >
-                      <QrCode size={15} />
-                      View Pass
-                    </button>
-                  )}
-                  {canRegister && (
-                    <button className="relay-btn" disabled={actionLoading} onClick={handleRegister}>
-                      {actionLoading ? "Registering..." : "Register Now"}
-                    </button>
-                  )}
-                  {canCancel && (
-                    <button className="relay-btn-danger" disabled={actionLoading} onClick={handleCancel}>
-                      {actionLoading ? "Cancelling..." : "Cancel Registration"}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Organized by */}
-              <div style={{ fontSize: 12.5, color: "var(--mute)", marginTop: 10 }}>
-                Organized by <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>{event.createdByName}</span>
-              </div>
+            <div style={{ display: "flex", gap: "20px", marginTop: "12px", fontSize: "13.5px", color: "rgba(255, 255, 255, 0.8)", flexWrap: "wrap" }}>
+              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <CalendarClock size={16} color="#A78BFA" /> {formatDate(event.startTime)} • {formatTime(event.startTime)}
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <MapPin size={16} color="#A78BFA" /> {event.isVirtual ? "Online / Web" : (event.venueName || "Campus Hall")}
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <Users size={16} color="#A78BFA" /> Capacity: {event.capacity} Attendees
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Main Content Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 20, alignItems: "start" }}>
-
-          {/* Left Column: Description + Timeline */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {/* Description */}
-            {event.description && (
-              <div className="relay-card">
-                <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text)", marginBottom: 12 }}>About this Event</div>
-                <div style={{ fontSize: 13.5, color: "var(--text-secondary)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
-                  {event.description}
+        {/* ── Two Column Booking Layout ────────────────────────────── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.25fr 0.75fr", gap: "28px", alignItems: "start" }}>
+          
+          {/* Left Column: Event Narrative, Timeline, Gallery, Related */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+            
+            {/* Organizer Banner */}
+            <div className="relay-card" style={{ display: "flex", alignItems: "center", gap: "16px", padding: "18px 24px" }}>
+              <div className="cc-brand-icon" style={{ width: "46px", height: "46px" }}>
+                <Shield size={22} />
+              </div>
+              <div>
+                <div style={{ fontSize: "11px", textTransform: "uppercase", fontWeight: 700, color: "var(--mute)", letterSpacing: "0.06em" }}>
+                  Official Campus Organizer
+                </div>
+                <div style={{ fontSize: "15px", fontWeight: 700, color: "var(--text)" }}>
+                  {event.createdByName || "Campus Student Affairs Council"}
+                </div>
+                <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                  Verified University Society & Faculty Liaison
                 </div>
               </div>
-            )}
+            </div>
 
-            {/* Cancellation / Rejection Reason */}
-            {registration && (registration.status === 'REJECTED' || registration.status === 'CANCELLED') && registration.reason && (
-              <div className="relay-card" style={{ borderLeft: "4px solid var(--coral)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <XCircle size={16} color="var(--coral)" />
-                  <span style={{ fontSize: 14, fontWeight: 600, color: "var(--coral)" }}>
-                    Reason for {registration.status.toLowerCase()}
-                  </span>
-                </div>
-                <div style={{ fontSize: 13.5, color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                  {registration.reason}
-                </div>
+            {/* About Event Description */}
+            <div className="relay-card" style={{ padding: "24px" }}>
+              <h3 style={{ fontSize: "17px", fontWeight: 700, color: "var(--text)", marginBottom: "14px" }}>
+                About This Event
+              </h3>
+              <div style={{ fontSize: "14.5px", color: "var(--text-secondary)", lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
+                {event.description || "Join fellow students, mentors, and industry pioneers for an engaging campus experience. Expand your network, explore interactive demonstrations, and participate in practical sessions."}
               </div>
-            )}
+            </div>
 
-            {/* Event Cancelled Reason */}
-            {!registration && event.status === 'CANCELLED' && event.cancelledReason && (
-              <div className="relay-card" style={{ borderLeft: "4px solid var(--coral)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <XCircle size={16} color="var(--coral)" />
-                  <span style={{ fontSize: 14, fontWeight: 600, color: "var(--coral)" }}>
-                    This event has been cancelled
-                  </span>
-                </div>
-                <div style={{ fontSize: 13.5, color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                  {event.cancelledReason}
-                </div>
-              </div>
-            )}
-
-            {/* Timeline */}
-            <div className="relay-card">
+            {/* Event Timeline / Schedule */}
+            <div className="relay-card" style={{ padding: "24px" }}>
+              <h3 style={{ fontSize: "17px", fontWeight: 700, color: "var(--text)", marginBottom: "16px" }}>
+                Event Schedule & Milestones
+              </h3>
               <TimelineDisplay event={event} />
             </div>
+
+            {/* Photo Gallery */}
+            {galleryImages.length > 0 && (
+              <div className="relay-card" style={{ padding: "24px" }}>
+                <h3 style={{ fontSize: "17px", fontWeight: 700, color: "var(--text)", marginBottom: "16px" }}>
+                  Event Gallery & Campus Photos
+                </h3>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" }}>
+                  {galleryImages.map((img, idx) => (
+                    <div key={idx} style={{ height: "130px", borderRadius: "12px", overflow: "hidden", border: "1px solid var(--border)" }}>
+                      <img src={img} alt={`Gallery ${idx}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Related Events */}
+            {relatedEvents.length > 0 && (
+              <div>
+                <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--text)", marginBottom: "14px" }}>
+                  More Events You May Like
+                </h3>
+                <div className="cc-events-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))" }}>
+                  {relatedEvents.map(rel => (
+                    <EventCard
+                      key={rel.id}
+                      event={rel}
+                      variant="rich"
+                      onClick={() => navigate(`/event/${rel.id}`)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Right Column: Details Sidebar */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-            {/* Event Details Card */}
-            <div className="relay-card">
-              <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text)", marginBottom: 16 }}>Event Details</div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {/* Date */}
-                <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                  <Calendar size={16} style={{ color: "var(--mute)", marginTop: 2, flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontSize: 12, color: "var(--mute)", fontWeight: 500 }}>Date</div>
-                    <div style={{ fontSize: 13.5, color: "var(--text)", fontWeight: 500 }}>{formatDate(event.startTime)}</div>
-                  </div>
+          {/* Right Column: Sticky Booking / Pass Card */}
+          <div style={{ position: "sticky", top: "20px", display: "flex", flexDirection: "column", gap: "20px" }}>
+            
+            {/* Main Action Card */}
+            <div className="relay-card" style={{ padding: "24px", boxShadow: "var(--shadow-md)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                <div>
+                  <span style={{ fontSize: "12px", color: "var(--mute)", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.06em" }}>Admission</span>
+                  <div style={{ fontSize: "22px", fontWeight: 800, color: "var(--primary)" }}>Free Student Pass</div>
                 </div>
-
-                {/* Time */}
-                <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                  <Clock size={16} style={{ color: "var(--mute)", marginTop: 2, flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontSize: 12, color: "var(--mute)", fontWeight: 500 }}>Time</div>
-                    <div style={{ fontSize: 13.5, color: "var(--text)", fontWeight: 500 }}>
-                      {formatTime(event.startTime)} — {formatTime(event.endTime)}
-                    </div>
-                  </div>
+                <div style={{
+                  padding: "4px 10px", borderRadius: "10px", fontSize: "11.5px", fontWeight: 700,
+                  background: "var(--primary-light)", color: "var(--primary)"
+                }}>
+                  {event.registrationMode}
                 </div>
+              </div>
 
-                {/* Venue */}
-                <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                  {event.isVirtual ? <Globe size={16} style={{ color: "var(--mute)", marginTop: 2, flexShrink: 0 }} />
-                    : <MapPin size={16} style={{ color: "var(--mute)", marginTop: 2, flexShrink: 0 }} />}
-                  <div>
-                    <div style={{ fontSize: 12, color: "var(--mute)", fontWeight: 500 }}>
-                      {event.isVirtual ? "Virtual Event" : "Venue"}
-                    </div>
-                    <div style={{ fontSize: 13.5, color: "var(--text)", fontWeight: 500 }}>
-                      {event.isVirtual ? (event.virtualLink || "Link will be shared") : event.venueName}
-                    </div>
-                    {event.isVirtual && event.virtualLink && (
-                      <a href={event.virtualLink} target="_blank" rel="noopener noreferrer"
-                        style={{ fontSize: 12, color: "var(--accent)", display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
-                        <Link2 size={12} /> Join Link
-                      </a>
-                    )}
-                  </div>
+              {/* Status & Deadline Alert */}
+              <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "12px", padding: "14px", marginBottom: "18px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", fontWeight: 600, color: "var(--text)", marginBottom: "4px" }}>
+                  <Clock size={15} style={{ color: "var(--primary)" }} />
+                  <span>Registration Deadline</span>
                 </div>
-
-                {/* Capacity */}
-                <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                  <Users size={16} style={{ color: "var(--mute)", marginTop: 2, flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontSize: 12, color: "var(--mute)", fontWeight: 500 }}>Capacity</div>
-                    <div style={{ fontSize: 13.5, color: "var(--text)", fontWeight: 500 }}>{event.capacity} participants</div>
-                  </div>
+                <div style={{ fontSize: "12.5px", color: isPastDeadline ? "var(--coral)" : "var(--text-secondary)" }}>
+                  {event.registrationDeadline ? formatDate(event.registrationDeadline) : "Open until event starts"}
                 </div>
-
-                {/* Registration Deadline */}
-                {event.registrationDeadline && (
-                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <AlertCircle size={16} style={{ color: isPastDeadline ? "var(--coral)" : "var(--mute)", marginTop: 2, flexShrink: 0 }} />
-                    <div>
-                      <div style={{ fontSize: 12, color: "var(--mute)", fontWeight: 500 }}>Registration Deadline</div>
-                      <div style={{ fontSize: 13.5, color: isPastDeadline ? "var(--coral)" : "var(--text)", fontWeight: 500 }}>
-                        {formatDateTime(event.registrationDeadline)}
-                      </div>
-                      {isPastDeadline && (
-                        <div style={{ fontSize: 11.5, color: "var(--coral)", marginTop: 2, fontWeight: 500 }}>
-                          Registration closed
-                        </div>
-                      )}
-                    </div>
+                {isPastDeadline && (
+                  <div style={{ fontSize: "11.5px", color: "var(--coral)", fontWeight: 600, marginTop: "4px" }}>
+                    Registration has closed for this event.
                   </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {canRegister && (
+                  <button
+                    type="button"
+                    className="cc-btn-primary"
+                    disabled={actionLoading}
+                    onClick={handleRegister}
+                    style={{ width: "100%", padding: "14px", fontSize: "15px" }}
+                  >
+                    {actionLoading ? "Registering..." : "Register Now"}
+                  </button>
+                )}
+
+                {registration && registration.status === "CONFIRMED" && (
+                  <>
+                    <button
+                      type="button"
+                      className="cc-btn-primary"
+                      onClick={() => setShowTicketModal(true)}
+                      style={{ width: "100%", padding: "13px", fontSize: "14px", background: "var(--teal)" }}
+                    >
+                      <QrCode size={16} /> View Digital Entry Pass
+                    </button>
+                    <div style={{ textAlign: "center", fontSize: "12px", color: "var(--teal)", fontWeight: 600 }}>
+                      ✓ Your seat is confirmed!
+                    </div>
+                  </>
+                )}
+
+                {registration && registration.status === "WAITLISTED" && (
+                  <div style={{ background: "var(--amber-light)", color: "var(--amber)", padding: "12px", borderRadius: "10px", fontSize: "13px", textAlign: "center", fontWeight: 600 }}>
+                    You are on the waitlist. You will be notified when a seat opens.
+                  </div>
+                )}
+
+                {canCancel && (
+                  <button
+                    type="button"
+                    className="relay-btn-danger"
+                    disabled={actionLoading}
+                    onClick={handleCancel}
+                    style={{ width: "100%", justifyContent: "center", padding: "10px" }}
+                  >
+                    {actionLoading ? "Cancelling..." : "Cancel Registration"}
+                  </button>
+                )}
+
+                {!user && (
+                  <button
+                    type="button"
+                    className="cc-btn-primary"
+                    onClick={() => navigate("/login")}
+                    style={{ width: "100%", padding: "14px", fontSize: "15px" }}
+                  >
+                    Sign in to Register
+                  </button>
                 )}
               </div>
             </div>
 
-            {/* Registration Info Card */}
-            {registration && (
-              <div className="relay-card">
-                <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text)", marginBottom: 16 }}>Your Registration</div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: 12.5, color: "var(--mute)" }}>Status</span>
-                    <span style={{
-                      padding: "2px 10px", borderRadius: 20, fontSize: 11.5, fontWeight: 600,
-                      background: getStatusStyle(registration.status).bg,
-                      color: getStatusStyle(registration.status).color,
-                    }}>
-                      {getStatusStyle(registration.status).label}
-                    </span>
-                  </div>
-
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: 12.5, color: "var(--mute)" }}>Registered</span>
-                    <span style={{ fontSize: 12.5, color: "var(--text)" }}>
-                      {formatDate(registration.registeredAt)}
-                    </span>
-                  </div>
-
-                  {registration.respondedAt && (
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 12.5, color: "var(--mute)" }}>Responded</span>
-                      <span style={{ fontSize: 12.5, color: "var(--text)" }}>
-                        {formatDate(registration.respondedAt)}
-                      </span>
-                    </div>
-                  )}
-
-                  {registration.cancelledAt && (
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 12.5, color: "var(--mute)" }}>Cancelled</span>
-                      <span style={{ fontSize: 12.5, color: "var(--coral)" }}>
-                        {formatDate(registration.cancelledAt)}
-                      </span>
-                    </div>
-                  )}
-                </div>
+            {/* Quick Venue / Location Card */}
+            <div className="relay-card" style={{ padding: "20px" }}>
+              <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--text)", marginBottom: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
+                <MapPin size={16} style={{ color: "var(--primary)" }} />
+                <span>Location & Venue</span>
               </div>
-            )}
+              <div style={{ fontSize: "13.5px", color: "var(--text)", fontWeight: 600, marginBottom: "4px" }}>
+                {event.isVirtual ? "Online / Virtual Stream" : (event.venueName || "Main Campus Hall")}
+              </div>
+              {event.isVirtual && event.virtualLink ? (
+                <a
+                  href={event.virtualLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12.5px", color: "var(--primary)", fontWeight: 600, textDecoration: "none", marginTop: "6px" }}
+                >
+                  <Link2 size={13} /> Access Meeting Room
+                </a>
+              ) : (
+                <div style={{ fontSize: "12px", color: "var(--mute)" }}>
+                  Please present your QR digital pass at entry.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -429,7 +450,7 @@ export default function EventDetailPage() {
           registration={{
             ...registration,
             eventTitle: event.title,
-            eventVenue: event.isVirtual ? event.virtualLink : event.venueName,
+            eventVenue: event.isVirtual ? (event.virtualLink || "Virtual") : event.venueName,
             eventStartTime: event.startTime,
             participantName: user?.name,
             participantEmail: user?.email,

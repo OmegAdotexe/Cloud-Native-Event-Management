@@ -51,7 +51,8 @@ public class SecurityConfig {
                     "/api/auth/register",
                     "/api/auth/google",
                     "/api/events/public",
-                    "/api/events/categories/stats"
+                    "/api/events/categories/stats",
+                    "/api/admin-applications/apply"
                 ).permitAll()
                 .requestMatchers(
                     "/actuator/**",

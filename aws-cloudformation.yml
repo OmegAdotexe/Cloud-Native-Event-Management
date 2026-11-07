@@ -1,0 +1,340 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CampusConnect / Relay Event Operations Platform - AWS Cloud Architecture"
+
+Parameters:
+  InstanceType:
+    Type: String
+    Description: EC2 instance type for running the containerized platform
+    Default: t3.small
+    AllowedValues:
+      - t3.small
+      - t3.medium
+      - t3.large
+  KeyName:
+    Type: String
+    Description: Existing EC2 Key Pair for SSH access
+    Default: invoice-app-mumbai
+  RepoUrl:
+    Type: String
+    Description: GitHub Repository URL
+    Default: https://github.com/OmegAdotexe/Cloud-Native-Event-Management.git
+  Branch:
+    Type: String
+    Description: Git Branch to deploy
+    Default: main
+
+Resources:
+  # ----------------------------------------------------------------------------
+  # Networking: Isolated VPC, Subnet, Internet Gateway & Routing
+  # ----------------------------------------------------------------------------
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.2.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: campusconnect-vpc
+        - Key: Project
+          Value: CampusConnect
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: campusconnect-igw
+        - Key: Project
+          Value: CampusConnect
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.2.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: campusconnect-public-subnet
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: campusconnect-public-rt
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  # ----------------------------------------------------------------------------
+  # Security Group: Web, API, SSH, and Dashboard Ports
+  # ----------------------------------------------------------------------------
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable HTTP (80), API (8080), SSH (22), RabbitMQ (15672), MailHog (8025)
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 15672
+          ToPort: 15672
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8025
+          ToPort: 8025
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: campusconnect-web-sg
+
+  # ----------------------------------------------------------------------------
+  # Storage: S3 Bucket for Event Images, Documents & Certificates
+  # ----------------------------------------------------------------------------
+  MediaBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "campusconnect-media-${AWS::AccountId}-${AWS::Region}"
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ["*"]
+            AllowedMethods: [GET, PUT, POST, HEAD]
+            AllowedOrigins: ["*"]
+            MaxAge: 3000
+      Tags:
+        - Key: Name
+          Value: campusconnect-media-bucket
+        - Key: Project
+          Value: CampusConnect
+
+  # ----------------------------------------------------------------------------
+  # IAM Role & Instance Profile for EC2
+  # ----------------------------------------------------------------------------
+  EC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "campusconnect-ec2-role-${AWS::Region}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: S3AndCloudWatchPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt MediaBucket.Arn
+                  - !Sub "${MediaBucket.Arn}/*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: "arn:aws:logs:*:*:*"
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+        - !Ref EC2Role
+
+  # ----------------------------------------------------------------------------
+  # Compute: EC2 Instance running Dockerized CampusConnect Platform
+  # ----------------------------------------------------------------------------
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      ImageId: ami-082a1ff88c78c6290 # Ubuntu 22.04 LTS (ap-south-1)
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 30
+            VolumeType: gp3
+            DeleteOnTermination: true
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          GroupSet:
+            - !Ref WebServerSecurityGroup
+          SubnetId: !Ref PublicSubnet
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -e
+          exec > >(tee -a /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
+          echo "=== Starting CampusConnect Deployment ==="
+
+          # 1. Update OS and install prerequisites
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -y
+          apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release git jq
+
+          # 2. Add 4GB Swap space to guarantee smooth Maven & Vite builds
+          if [ ! -f /swapfile ]; then
+              echo "Configuring 4GB swapfile..."
+              fallocate -l 4G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=4096
+              chmod 600 /swapfile
+              mkswap /swapfile
+              swapon /swapfile
+              echo '/swapfile none swap sw 0 0' >> /etc/fstab
+          fi
+
+          # 3. Install Docker and Docker Compose Plugin
+          echo "Installing Docker..."
+          install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+          chmod a+r /etc/apt/keyrings/docker.asc
+
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+          apt-get update -y
+          apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+          systemctl start docker
+          systemctl enable docker
+          usermod -aG docker ubuntu
+
+          # 4. Clone CampusConnect from GitHub
+          echo "Cloning repository..."
+          rm -rf /home/ubuntu/app
+          git clone ${RepoUrl} /home/ubuntu/app
+          cd /home/ubuntu/app
+          git checkout ${Branch}
+
+          # 5. Populate production environment
+          cat > .env << 'EOF'
+          VITE_API_BASE_URL=
+          JWT_SECRET=RYuPADGXp6U3uf5t4rr_qzZlIY1-yETCfAW0VQb___4
+          DB_HOST=postgres
+          DB_PORT=5432
+          DB_NAME=campusconnect
+          DB_USER=postgres
+          DB_PASSWORD=postgres
+          RABBITMQ_HOST=rabbitmq
+          RABBITMQ_PORT=5672
+          RABBITMQ_USER=guest
+          RABBITMQ_PASSWORD=guest
+          MAIL_HOST=mailhog
+          MAIL_PORT=1025
+          EMAIL_FROM=noreply@campusconnect.dev
+          EMAIL_ENABLED=true
+          EOF
+
+          cp .env backend/.env
+          chown -R ubuntu:ubuntu /home/ubuntu/app
+
+          # 6. Create systemd service for automatic management
+          cat > /etc/systemd/system/campusconnect.service << 'SVCEOF'
+          [Unit]
+          Description=CampusConnect Event Operations Platform
+          After=docker.service
+          Requires=docker.service
+
+          [Service]
+          Type=oneshot
+          RemainAfterExit=yes
+          WorkingDirectory=/home/ubuntu/app
+          ExecStart=/usr/bin/docker compose -f docker-compose.prod.yml up -d --build
+          ExecStop=/usr/bin/docker compose -f docker-compose.prod.yml down
+          TimeoutStartSec=1200
+          User=ubuntu
+
+          [Install]
+          WantedBy=multi-user.target
+          SVCEOF
+
+          systemctl daemon-reload
+          systemctl enable campusconnect.service
+          systemctl start campusconnect.service
+
+          echo "=== CampusConnect Deployment Complete ==="
+      Tags:
+        - Key: Name
+          Value: campusconnect-server
+        - Key: Project
+          Value: CampusConnect
+
+Outputs:
+  WebUIUrl:
+    Description: Live Public URL for the CampusConnect Web Application
+    Value: !Sub "http://${EC2Instance.PublicIp}"
+
+  BackendApiUrl:
+    Description: Direct REST API & Health Check Endpoint
+    Value: !Sub "http://${EC2Instance.PublicIp}:8080"
+
+  SwaggerDocsUrl:
+    Description: Interactive OpenAPI / Swagger UI Documentation
+    Value: !Sub "http://${EC2Instance.PublicIp}:8080/swagger-ui/index.html"
+
+  RabbitMQDashboardUrl:
+    Description: RabbitMQ Message Broker Management Console
+    Value: !Sub "http://${EC2Instance.PublicIp}:15672"
+
+  MailHogInboxUrl:
+    Description: MailHog Web Inbox for Outgoing Notification Emails
+    Value: !Sub "http://${EC2Instance.PublicIp}:8025"
+
+  EC2PublicIP:
+    Description: Public IPv4 Address of the EC2 Instance
+    Value: !GetAtt EC2Instance.PublicIp
+
+  S3MediaBucket:
+    Description: S3 Bucket Name for Event Documents & Media
+    Value: !Ref MediaBucket
+
+  SSHCommand:
+    Description: SSH command to connect to the server
+    Value: !Sub "ssh -i invoice-app-mumbai.pem ubuntu@${EC2Instance.PublicIp}"

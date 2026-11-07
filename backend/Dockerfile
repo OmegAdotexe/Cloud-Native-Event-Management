@@ -9,12 +9,11 @@ WORKDIR /workspace
 # Install maven
 RUN apk add --no-cache maven
 
-# Copy pom.xml and download dependencies
+# Copy pom.xml and source code
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
-
-# Copy source code and build executable jar
 COPY src src
+
+# Build executable jar
 RUN mvn clean package -DskipTests -B
 
 # Runner Stage

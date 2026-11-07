@@ -78,6 +78,38 @@ export default function LoginPage() {
           </button>
         </form>
 
+        <div style={{ marginTop: "20px", padding: "12px 14px", background: "var(--bg)", borderRadius: "10px", border: "1px solid var(--border)" }}>
+          <div style={{ fontSize: "11px", textTransform: "uppercase", fontWeight: 700, color: "var(--mute)", letterSpacing: "0.5px", marginBottom: "8px" }}>
+            Quick Demo Logins
+          </div>
+          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="relay-btn-ghost relay-btn-sm"
+              style={{ fontSize: "12px", padding: "4px 8px" }}
+              onClick={() => { setEmail("participant@example.com"); setPassword("password"); }}
+            >
+              Participant
+            </button>
+            <button
+              type="button"
+              className="relay-btn-ghost relay-btn-sm"
+              style={{ fontSize: "12px", padding: "4px 8px" }}
+              onClick={() => { setEmail("admin@example.com"); setPassword("password"); }}
+            >
+              Event Admin
+            </button>
+            <button
+              type="button"
+              className="relay-btn-ghost relay-btn-sm"
+              style={{ fontSize: "12px", padding: "4px 8px" }}
+              onClick={() => { setEmail("superadmin@example.com"); setPassword("password"); }}
+            >
+              Super Admin
+            </button>
+          </div>
+        </div>
+
         <p style={{ marginTop: "20px", fontSize: "13px", textAlign: "center", color: "var(--mute)" }}>
           Don't have an account? <Link to="/register" style={{ color: "var(--amber)", textDecoration: "none", fontWeight: 600 }}>Sign up</Link>
         </p>

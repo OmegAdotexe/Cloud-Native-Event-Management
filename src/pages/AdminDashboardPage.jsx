@@ -164,41 +164,80 @@ export default function AdminDashboardPage({ events = [], isLoading, error, onRe
                   gap: "12px"
                 }}>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: "14px", color: "var(--text)" }}>
-                      {reg.participantName}
-                      <span style={{ marginLeft: "8px", fontSize: "12px", color: "var(--mute)", fontWeight: 400 }}>#{reg.participantId}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                      <span style={{ fontWeight: 600, fontSize: "14px", color: "var(--text)" }}>
+                        {reg.participantName}
+                      </span>
+                      <span style={{
+                        fontSize: "10.5px",
+                        padding: "1px 7px",
+                        borderRadius: "10px",
+                        fontWeight: 700,
+                        background: reg.participantRole === "EVENT_ADMIN" ? "var(--primary-light)" : "var(--border)",
+                        color: reg.participantRole === "EVENT_ADMIN" ? "var(--primary)" : "var(--mute)"
+                      }}>
+                        {reg.participantRole || "PARTICIPANT"}
+                      </span>
                     </div>
                     <div style={{ fontSize: "12.5px", color: "var(--primary)", marginTop: "2px", fontWeight: 500 }}>
                       Event: {reg.eventTitle || `Event #${reg.eventId}`}
                     </div>
                     <div style={{ fontSize: "11.5px", color: "var(--mute)", marginTop: "2px" }}>
-                      Requested: {new Date(reg.registeredAt).toLocaleString()}
+                      Submitted: {new Date(reg.registeredAt).toLocaleString()}
                     </div>
                   </div>
 
                   <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                    <button
-                      type="button"
-                      className="relay-btn relay-btn-sm"
-                      style={{ background: "var(--teal)", color: "#fff" }}
-                      onClick={() => handlePendingApprove(reg.eventId, reg.id)}
-                    >
-                      Approve
-                    </button>
-                    <button
-                      type="button"
-                      className="relay-btn-danger relay-btn-sm"
-                      onClick={() => handlePendingReject(reg.eventId, reg.id)}
-                    >
-                      Reject
-                    </button>
-                    <button
-                      type="button"
-                      className="relay-btn-ghost relay-btn-sm"
-                      onClick={() => navigate("/events", { state: { editEventId: reg.eventId, tab: "REGISTRATIONS" } })}
-                    >
-                      View Event
-                    </button>
+                    {(reg.selfRegistration || reg.participantId === user?.id) ? (
+                      <>
+                        <span style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
+                          background: "rgba(239, 68, 68, 0.1)",
+                          color: "var(--coral)",
+                          padding: "5px 10px",
+                          borderRadius: "6px",
+                          fontSize: "11.5px",
+                          fontWeight: 600,
+                          border: "1px solid rgba(239, 68, 68, 0.25)"
+                        }}>
+                          <AlertCircle size={13} /> Self-Application (Cannot Self-Approve)
+                        </span>
+                        <button
+                          type="button"
+                          className="relay-btn-ghost relay-btn-sm"
+                          onClick={() => navigate("/events", { state: { editEventId: reg.eventId, tab: "REGISTRATIONS" } })}
+                        >
+                          View Event
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="relay-btn relay-btn-sm"
+                          style={{ background: "var(--teal)", color: "#fff" }}
+                          onClick={() => handlePendingApprove(reg.eventId, reg.id)}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          className="relay-btn-danger relay-btn-sm"
+                          onClick={() => handlePendingReject(reg.eventId, reg.id)}
+                        >
+                          Reject
+                        </button>
+                        <button
+                          type="button"
+                          className="relay-btn-ghost relay-btn-sm"
+                          onClick={() => navigate("/events", { state: { editEventId: reg.eventId, tab: "REGISTRATIONS" } })}
+                        >
+                          View Event
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
@@ -320,15 +359,36 @@ export default function AdminDashboardPage({ events = [], isLoading, error, onRe
                           </span>
                         </td>
                         <td>
-                          <span style={{ fontSize: "12px", color: "var(--text)" }}>
-                            {ev.confirmedRegistrations || 0} / {ev.capacity}
-                          </span>
+                          {ev.status === "CANCELLED" ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                              <span style={{ fontSize: "11px", color: "var(--coral)", fontWeight: 700 }}>Inactive (Cancelled)</span>
+                              <span style={{ fontSize: "11.5px", color: "var(--mute)" }}>
+                                {ev.confirmedRegistrations || 0} Confirmed / {ev.capacity} Capacity
+                              </span>
+                            </div>
+                          ) : (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                              <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text)" }}>
+                                <span style={{ color: "var(--teal)" }}>{ev.confirmedRegistrations || 0} Confirmed</span>
+                                <span style={{ color: "var(--mute)", fontWeight: 400 }}> / {ev.capacity} Capacity</span>
+                              </div>
+                              <div style={{ display: "flex", gap: "6px", alignItems: "center", fontSize: "11px", color: "var(--mute)", flexWrap: "wrap" }}>
+                                <span>{ev.availableCapacity ?? Math.max(0, (ev.capacity || 0) - (ev.confirmedRegistrations || 0))} Available</span>
+                                {ev.pendingRegistrations > 0 && (
+                                  <span style={{ color: "var(--amber)", fontWeight: 700, background: "rgba(245, 158, 11, 0.12)", padding: "1px 6px", borderRadius: "4px" }}>
+                                    {ev.pendingRegistrations} Pending
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </td>
                         <td>
                           <span className={`relay-pill ${
                             ev.status === "PUBLISHED" ? "green" :
+                            ev.status === "CANCELLED" ? "coral" :
                             ev.status === "DRAFT" ? "amber" : "blue"
-                          }`} style={{ fontSize: "10.5px", padding: "2px 7px" }}>
+                          }`} style={{ fontSize: "10.5px", padding: "2px 7px", fontWeight: 700 }}>
                             {ev.status}
                           </span>
                         </td>

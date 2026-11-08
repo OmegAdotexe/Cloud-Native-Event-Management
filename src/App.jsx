@@ -289,6 +289,16 @@ function MainApp() {
 
   useEffect(() => { loadEvents(); }, [loadEvents]);
 
+  // Periodic background refresh (30s) when tab is visible for fresh registration/capacity metrics
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        loadEvents();
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [loadEvents]);
+
   const shared = { events, isLoading, error, onRefresh: loadEvents };
   return (
     <div className={`relay-root ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>

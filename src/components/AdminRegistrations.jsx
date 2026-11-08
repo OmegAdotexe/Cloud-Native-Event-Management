@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext.jsx";
 import * as relayApi from "../api/relayApi.js";
 import TicketModal from "./TicketModal.jsx";
 import TicketVerifierModal from "./TicketVerifierModal.jsx";
@@ -8,6 +9,7 @@ import {
 } from "lucide-react";
 
 export default function AdminRegistrations({ event }) {
+  const { user: currentUser } = useAuth();
   const [registrations, setRegistrations] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -261,6 +263,18 @@ export default function AdminRegistrations({ event }) {
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                     <span style={{ fontWeight: 700, fontSize: "14px", color: "var(--text)" }}>{reg.participantName}</span>
+                    {reg.participantRole && (
+                      <span style={{
+                        fontSize: "10.5px",
+                        padding: "1px 7px",
+                        borderRadius: "10px",
+                        fontWeight: 700,
+                        background: reg.participantRole === "EVENT_ADMIN" ? "var(--primary-light)" : "var(--border)",
+                        color: reg.participantRole === "EVENT_ADMIN" ? "var(--primary)" : "var(--mute)"
+                      }}>
+                        {reg.participantRole}
+                      </span>
+                    )}
                     <span style={{ 
                       padding: "2px 8px", 
                       borderRadius: "12px", 
@@ -308,27 +322,46 @@ export default function AdminRegistrations({ event }) {
 
                   {reg.status === 'PENDING' && (
                     <>
-                      <button 
-                        type="button"
-                        className="relay-btn relay-btn-sm" 
-                        disabled={actionLoading}
-                        onClick={() => handleApprove(reg.id)}
-                        style={{ background: "var(--teal)" }}
-                      >
-                        Approve
-                      </button>
-                      <button 
-                        type="button"
-                        className="relay-btn-danger relay-btn-sm" 
-                        disabled={actionLoading}
-                        onClick={() => {
-                          setRejectingReg(reg);
-                          setRejectionReason("");
-                          setRejectionError("");
-                        }}
-                      >
-                        Decline
-                      </button>
+                      {(reg.selfRegistration || reg.canApprove === false || (currentUser && reg.participantId === currentUser.id)) ? (
+                        <span style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          background: "rgba(239, 68, 68, 0.1)",
+                          color: "var(--coral)",
+                          padding: "4px 8px",
+                          borderRadius: "6px",
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          border: "1px solid rgba(239, 68, 68, 0.25)"
+                        }}>
+                          ⚠️ Cannot Self-Approve
+                        </span>
+                      ) : (
+                        <>
+                          <button 
+                            type="button"
+                            className="relay-btn relay-btn-sm" 
+                            disabled={actionLoading}
+                            onClick={() => handleApprove(reg.id)}
+                            style={{ background: "var(--teal)" }}
+                          >
+                            Approve
+                          </button>
+                          <button 
+                            type="button"
+                            className="relay-btn-danger relay-btn-sm" 
+                            disabled={actionLoading}
+                            onClick={() => {
+                              setRejectingReg(reg);
+                              setRejectionReason("");
+                              setRejectionError("");
+                            }}
+                          >
+                            Decline
+                          </button>
+                        </>
+                      )}
                     </>
                   )}
                   

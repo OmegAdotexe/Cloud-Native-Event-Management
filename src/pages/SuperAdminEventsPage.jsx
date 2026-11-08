@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { 
   Calendar, CheckCircle2, Users, Clock, Search, 
   Plus, BarChart2, Eye, Edit,
-  LayoutGrid, List, RotateCcw, MoreVertical, ChevronDown, ChevronRight, Copy
+  LayoutGrid, List, RotateCcw, MoreVertical, ChevronDown, ChevronRight, Copy,
+  AlertTriangle, X
 } from "lucide-react";
 import { getEventCoverImage, handleImageError } from "../data/eventAssets.js";
+import * as relayApi from "../api/relayApi.js";
 
-export default function SuperAdminEventsPage({ events = [], isLoading, error }) {
+export default function SuperAdminEventsPage({ events = [], isLoading, error, onRefresh }) {
   const navigate = useNavigate();
   
   const [search, setSearch] = useState("");
@@ -20,6 +22,27 @@ export default function SuperAdminEventsPage({ events = [], isLoading, error }) 
   const [viewMode, setViewMode] = useState("LIST");
   const [openMenuId, setOpenMenuId] = useState(null);
   const [expandedDuplicates, setExpandedDuplicates] = useState({});
+  const [resolvingDuplicateGroup, setResolvingDuplicateGroup] = useState(null);
+  const [resolvingLoading, setResolvingLoading] = useState(false);
+  const [resolvingMsg, setResolvingMsg] = useState("");
+
+  const handleDeactivateDuplicate = async (dupId) => {
+    try {
+      setResolvingLoading(true);
+      await relayApi.cancelEvent(dupId, "Deactivated via Administrative Duplicate Resolution Workflow");
+      setResolvingMsg("Duplicate record successfully deactivated.");
+      if (onRefresh) onRefresh();
+      setResolvingDuplicateGroup(prev => {
+        if (!prev) return null;
+        const updated = prev.items.map(it => it.id === dupId ? { ...it, status: "CANCELLED" } : it);
+        return { ...prev, items: updated };
+      });
+    } catch (err) {
+      setResolvingMsg(err.message || "Failed to deactivate duplicate");
+    } finally {
+      setResolvingLoading(false);
+    }
+  };
 
   const availableOrganizers = Array.from(
     new Set(events.map(e => e.createdByName || e.organizerClub).filter(Boolean))
@@ -70,8 +93,9 @@ export default function SuperAdminEventsPage({ events = [], isLoading, error }) 
     const t = (e.title || "").trim().toLowerCase();
     const v = (e.venueName || "").trim().toLowerCase();
     const s = e.startTime ? e.startTime.slice(0, 16) : "";
+    const end = e.endTime ? e.endTime.slice(0, 16) : "";
     const o = (e.organizerClub || e.createdByName || "").trim().toLowerCase();
-    return `${t}__${v}__${s}__${o}`;
+    return `${t}__${v}__${s}__${end}__${o}`;
   };
 
   const groupedEvents = React.useMemo(() => {
@@ -290,33 +314,48 @@ export default function SuperAdminEventsPage({ events = [], isLoading, error }) 
                           </td>
 
                           <td>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
                               <span style={{ fontWeight: 600, color: "var(--text)", fontSize: "13.5px" }}>
                                 {event.title}
                               </span>
                               <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                                <span style={{ fontSize: "11px", color: "var(--mute)" }}>
-                                  ID: {event.id.slice(0, 8)}...
-                                </span>
-                                <span style={{ fontSize: "10.5px", background: "var(--border-light)", color: "var(--text-secondary)", padding: "1px 5px", borderRadius: "4px" }}>
+                                <span style={{ fontSize: "10.5px", background: "var(--border-light)", color: "var(--text-secondary)", padding: "1px 6px", borderRadius: "4px" }}>
                                   {event.category || "EVENT"}
                                 </span>
-                                {event.registrationMode === "APPROVAL_REQUIRED" && (
-                                  <span style={{ fontSize: "10.5px", background: "var(--amber-light)", color: "var(--amber)", padding: "1px 5px", borderRadius: "4px", fontWeight: 600 }}>
-                                    Approval
+                                {event.registrationMode === "APPROVAL_REQUIRED" ? (
+                                  <span style={{ fontSize: "10.5px", background: "var(--amber-light)", color: "var(--amber)", padding: "1px 6px", borderRadius: "4px", fontWeight: 600 }}>
+                                    Approval Req.
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: "10.5px", background: "var(--teal-light)", color: "var(--teal)", padding: "1px 6px", borderRadius: "4px", fontWeight: 600 }}>
+                                    Open Entry
                                   </span>
                                 )}
                               </div>
 
                               {hasDuplicates && (
-                                <button
-                                  type="button"
-                                  className="cc-duplicate-pill"
-                                  onClick={() => toggleDuplicateExpand(key)}
-                                >
-                                  {count} identical sessions
-                                  {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                                </button>
+                                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
+                                  <button
+                                    type="button"
+                                    className="cc-duplicate-pill"
+                                    onClick={() => toggleDuplicateExpand(key)}
+                                    style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}
+                                  >
+                                    <span>{count} Matching Records</span>
+                                    {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="relay-btn-ghost relay-btn-sm"
+                                    onClick={() => {
+                                      setResolvingDuplicateGroup({ key, items });
+                                      setResolvingMsg("");
+                                    }}
+                                    style={{ fontSize: "11px", padding: "2px 8px", color: "var(--amber)", borderColor: "var(--amber-light)" }}
+                                  >
+                                    Resolve Duplicates
+                                  </button>
+                                </div>
                               )}
                             </div>
                           </td>
@@ -415,50 +454,70 @@ export default function SuperAdminEventsPage({ events = [], isLoading, error }) 
                         </tr>
 
                         {/* Expandable duplicate child rows */}
-                        {hasDuplicates && isExpanded && items.slice(1).map((dup, idx) => (
-                          <tr key={dup.id} className="cc-duplicate-subrow">
-                            <td style={{ textAlign: "center", color: "var(--mute)", fontSize: "11px" }}>
-                              ↳
-                            </td>
-                            <td>
-                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <span style={{ fontSize: "12px", fontFamily: "monospace", color: "var(--text-secondary)" }}>
-                                  ID: {dup.id}
+                        {hasDuplicates && isExpanded && items.slice(1).map((dup, idx) => {
+                          const isCancelled = dup.status === "CANCELLED";
+                          return (
+                            <tr key={dup.id} className="cc-duplicate-subrow" style={{ opacity: isCancelled ? 0.6 : 1 }}>
+                              <td style={{ textAlign: "center", color: "var(--amber)", fontSize: "12px" }}>
+                                ↳
+                              </td>
+                              <td>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                  <span style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-secondary)" }}>
+                                    Duplicate Record: {dup.venueName || "Main Campus"}
+                                  </span>
+                                  <span style={{ fontSize: "10.5px", background: "var(--border)", padding: "1px 6px", borderRadius: "4px" }}>
+                                    Copy #{idx + 2}
+                                  </span>
+                                </div>
+                              </td>
+                              <td style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                                {dup.organizerClub || dup.createdByName}
+                              </td>
+                              <td style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                                {new Date(dup.startTime).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
+                              </td>
+                              <td style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                                {dup.venueName}
+                              </td>
+                              <td style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                                {dup.confirmedRegistrations || 0} Confirmed / {dup.capacity}
+                              </td>
+                              <td>
+                                <span className={`relay-pill ${dup.status === "PUBLISHED" ? "green" : dup.status === "CANCELLED" ? "coral" : "amber"}`} style={{ fontSize: "10.5px", padding: "2px 6px" }}>
+                                  {dup.status}
                                 </span>
-                                <span style={{ fontSize: "10.5px", background: "var(--border)", padding: "1px 6px", borderRadius: "4px" }}>
-                                  Copy #{idx + 2}
-                                </span>
-                              </div>
-                            </td>
-                            <td style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-                              {dup.organizerClub || dup.createdByName}
-                            </td>
-                            <td style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-                              {new Date(dup.startTime).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
-                            </td>
-                            <td style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-                              {dup.venueName}
-                            </td>
-                            <td style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-                              {dup.confirmedRegistrations || 0} / {dup.capacity}
-                            </td>
-                            <td>
-                              <span className={`relay-pill ${dup.status === "PUBLISHED" ? "green" : "amber"}`} style={{ fontSize: "10.5px", padding: "2px 6px" }}>
-                                {dup.status}
-                              </span>
-                            </td>
-                            <td style={{ textAlign: "right" }}>
-                              <button
-                                type="button"
-                                className="relay-btn-ghost relay-btn-sm"
-                                style={{ fontSize: "11px", padding: "3px 8px" }}
-                                onClick={() => navigate("/events", { state: { editEventId: dup.id } })}
-                              >
-                                Edit
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                              </td>
+                              <td style={{ textAlign: "right" }}>
+                                <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
+                                  {!isCancelled ? (
+                                    <button
+                                      type="button"
+                                      className="relay-btn-danger relay-btn-sm"
+                                      style={{ fontSize: "11px", padding: "2px 8px" }}
+                                      disabled={resolvingLoading}
+                                      onClick={() => handleDeactivateDuplicate(dup.id)}
+                                    >
+                                      Deactivate
+                                    </button>
+                                  ) : (
+                                    <span style={{ fontSize: "11px", color: "var(--coral)", fontWeight: 600 }}>
+                                      Deactivated
+                                    </span>
+                                  )}
+                                  <button
+                                    type="button"
+                                    className="relay-btn-ghost relay-btn-sm"
+                                    style={{ fontSize: "11px", padding: "2px 8px" }}
+                                    onClick={() => navigate("/events", { state: { editEventId: dup.id } })}
+                                  >
+                                    Edit
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </React.Fragment>
                     );
                   })}
@@ -597,6 +656,166 @@ export default function SuperAdminEventsPage({ events = [], isLoading, error }) 
           )}
         </div>
       </div>
+
+      {/* Administrative Duplicate Resolution Modal */}
+      {resolvingDuplicateGroup && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0, 0, 0, 0.65)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000,
+          padding: "20px",
+          backdropFilter: "blur(3px)"
+        }}>
+          <div style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "14px",
+            maxWidth: "680px",
+            width: "100%",
+            padding: "24px",
+            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.3)"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "8px",
+                  background: "var(--amber-light)",
+                  color: "var(--amber)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}>
+                  <AlertTriangle size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--text)" }}>
+                    Resolve Duplicate Event Records
+                  </h3>
+                  <p style={{ margin: "2px 0 0", fontSize: "12.5px", color: "var(--mute)" }}>
+                    Review duplicate records and deactivate redundant copies safely without deleting historical data.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="relay-btn-ghost relay-btn-sm"
+                onClick={() => { setResolvingDuplicateGroup(null); setResolvingMsg(""); }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {resolvingMsg && (
+              <div style={{
+                padding: "8px 12px",
+                borderRadius: "6px",
+                background: resolvingMsg.includes("Failed") ? "rgba(239, 68, 68, 0.1)" : "rgba(42, 171, 138, 0.1)",
+                color: resolvingMsg.includes("Failed") ? "var(--coral)" : "var(--teal)",
+                fontSize: "12.5px",
+                marginBottom: "14px",
+                fontWeight: 600
+              }}>
+                {resolvingMsg}
+              </div>
+            )}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", maxHeight: "420px", overflowY: "auto" }}>
+              {resolvingDuplicateGroup.items.map((it, idx) => {
+                const isPrimary = idx === 0;
+                const isCancelled = it.status === "CANCELLED";
+                const confirmed = it.confirmedRegistrations || 0;
+                return (
+                  <div
+                    key={it.id}
+                    style={{
+                      padding: "12px 16px",
+                      borderRadius: "10px",
+                      border: `1.5px solid ${isPrimary ? "var(--primary)" : isCancelled ? "var(--border-light)" : "var(--border)"}`,
+                      background: isPrimary ? "rgba(108, 59, 238, 0.04)" : "var(--surface)",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      gap: "12px"
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                        <span style={{ fontWeight: 700, fontSize: "13.5px", color: "var(--text)" }}>
+                          {it.title}
+                        </span>
+                        {isPrimary && (
+                          <span style={{ background: "var(--primary-light)", color: "var(--primary)", fontSize: "10.5px", fontWeight: 700, padding: "1px 7px", borderRadius: "10px" }}>
+                            Primary / Active Copy
+                          </span>
+                        )}
+                        <span className={`relay-pill ${
+                          it.status === "PUBLISHED" ? "green" :
+                          it.status === "CANCELLED" ? "coral" : "amber"
+                        }`} style={{ fontSize: "10.5px", padding: "1px 6px" }}>
+                          {it.status}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: "12px", color: "var(--mute)", marginTop: "4px" }}>
+                        <span>Schedule: {new Date(it.startTime).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                        <span style={{ margin: "0 8px" }}>•</span>
+                        <span>Venue: {it.venueName || "Main Campus"}</span>
+                        <span style={{ margin: "0 8px" }}>•</span>
+                        <span>Capacity: {it.capacity}</span>
+                      </div>
+                      <div style={{ fontSize: "11.5px", marginTop: "3px", fontWeight: 600, color: confirmed > 0 ? "var(--teal)" : "var(--mute)" }}>
+                        {confirmed > 0 ? `✓ ${confirmed} Confirmed Attendee${confirmed > 1 ? "s" : ""}` : "0 Attendees registered"}
+                      </div>
+                    </div>
+
+                    <div>
+                      {!isPrimary && !isCancelled && (
+                        <button
+                          type="button"
+                          className="relay-btn-danger relay-btn-sm"
+                          disabled={resolvingLoading}
+                          onClick={() => handleDeactivateDuplicate(it.id)}
+                        >
+                          Deactivate Redundant Copy
+                        </button>
+                      )}
+                      {isCancelled && (
+                        <span style={{ fontSize: "11.5px", color: "var(--coral)", fontWeight: 600 }}>
+                          ✓ Deactivated
+                        </span>
+                      )}
+                      {isPrimary && (
+                        <span style={{ fontSize: "11.5px", color: "var(--primary)", fontWeight: 600 }}>
+                          Retained as Master
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "18px" }}>
+              <button
+                type="button"
+                className="relay-btn-ghost"
+                onClick={() => { setResolvingDuplicateGroup(null); setResolvingMsg(""); }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

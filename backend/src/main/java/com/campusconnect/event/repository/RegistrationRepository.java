@@ -74,4 +74,14 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
 
     @Query("SELECT r FROM Registration r WHERE r.status = :status ORDER BY r.registeredAt DESC")
     Page<Registration> findAllByStatus(@Param("status") RegistrationStatus status, Pageable pageable);
+
+    interface EventRegistrationCountSummary {
+        Long getEventId();
+        RegistrationStatus getStatus();
+        Long getCount();
+    }
+
+    @Query("SELECT r.event.id as eventId, r.status as status, COUNT(r) as count " +
+           "FROM Registration r WHERE r.event.id IN :eventIds GROUP BY r.event.id, r.status")
+    List<EventRegistrationCountSummary> countRegistrationsByEventIds(@Param("eventIds") List<Long> eventIds);
 }

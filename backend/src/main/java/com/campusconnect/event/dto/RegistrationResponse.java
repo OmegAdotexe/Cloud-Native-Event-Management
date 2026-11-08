@@ -26,6 +26,9 @@ public class RegistrationResponse {
     private String participantName;
     private String participantEmail;
     private String participantDepartment;
+    private String participantRole;
+    private Boolean selfRegistration;
+    private Boolean canApprove;
     private RegistrationStatus status;
     private LocalDateTime registeredAt;
     private LocalDateTime respondedAt;

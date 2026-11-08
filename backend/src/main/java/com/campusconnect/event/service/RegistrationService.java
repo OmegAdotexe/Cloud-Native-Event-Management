@@ -188,7 +188,8 @@ public class RegistrationService {
         Registration registration = registrationRepository.findById(registrationId)
                 .orElseThrow(() -> new EntityNotFoundException("Registration not found"));
 
-        if (registration.getParticipant().getId().equals(requester.getId())) {
+        if (registration.getParticipant().getId().equals(requester.getId()) ||
+                (event.getCreatedBy() != null && registration.getParticipant().getId().equals(event.getCreatedBy().getId()))) {
             throw new AccessDeniedException("Event organizers cannot approve their own registration requests.");
         }
 
@@ -243,7 +244,8 @@ public class RegistrationService {
         Registration registration = registrationRepository.findById(registrationId)
                 .orElseThrow(() -> new EntityNotFoundException("Registration not found"));
 
-        if (registration.getParticipant().getId().equals(requester.getId())) {
+        if (registration.getParticipant().getId().equals(requester.getId()) ||
+                (event.getCreatedBy() != null && registration.getParticipant().getId().equals(event.getCreatedBy().getId()))) {
             throw new AccessDeniedException("Event organizers cannot reject their own registration requests.");
         }
 
@@ -382,6 +384,11 @@ public class RegistrationService {
     }
 
     private RegistrationResponse toResponse(Registration registration) {
+        boolean isSelf = registration.getEvent().getCreatedBy() != null &&
+                registration.getParticipant().getId().equals(registration.getEvent().getCreatedBy().getId());
+        String role = registration.getParticipant().getRole() != null ?
+                registration.getParticipant().getRole().name() : "PARTICIPANT";
+
         return RegistrationResponse.builder()
                 .id(registration.getId())
                 .eventId(registration.getEvent().getId())
@@ -399,6 +406,9 @@ public class RegistrationService {
                 .participantName(registration.getParticipant().getName())
                 .participantEmail(registration.getParticipant().getEmail())
                 .participantDepartment(registration.getParticipant().getDepartment())
+                .participantRole(role)
+                .selfRegistration(isSelf)
+                .canApprove(!isSelf)
                 .status(registration.getStatus())
                 .registeredAt(registration.getRegisteredAt())
                 .respondedAt(registration.getRespondedAt())

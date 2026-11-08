@@ -28,6 +28,10 @@ import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import com.campusconnect.event.model.*;
+import com.campusconnect.event.repository.RegistrationRepository;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.EnumMap;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +42,7 @@ public class EventService {
     private final EventChangeLogRepository eventChangeLogRepository;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final RegistrationRepository registrationRepository;
 
     @jakarta.persistence.PersistenceContext
     private jakarta.persistence.EntityManager entityManager;
@@ -112,14 +117,14 @@ public class EventService {
                 events = eventRepository.findAllByOrderByStartTimeAsc();
             }
         }
-        return events.stream().map(this::toResponse).toList();
+        return buildEventResponses(events);
     }
 
     public List<EventResponse> getPublishedEvents(EventCategory category) {
         List<Event> events = (category != null)
                 ? eventRepository.findByStatusAndCategoryOrderByStartTimeAsc(EventStatus.PUBLISHED, category)
                 : eventRepository.findByStatusOrderByStartTimeAsc(EventStatus.PUBLISHED);
-        return events.stream().map(this::toResponse).toList();
+        return buildEventResponses(events);
     }
 
     public java.util.Map<String, Long> getCategoryStats() {
@@ -304,13 +309,39 @@ public class EventService {
         }
     }
 
-    private EventResponse toResponse(Event event) {
+    private List<EventResponse> buildEventResponses(List<Event> events) {
+        if (events == null || events.isEmpty()) {
+            return List.of();
+        }
+        List<Long> eventIds = events.stream().map(Event::getId).toList();
+        List<RegistrationRepository.EventRegistrationCountSummary> summaries =
+                registrationRepository.countRegistrationsByEventIds(eventIds);
+
+        Map<Long, Map<RegistrationStatus, Long>> statsMap = new HashMap<>();
+        for (RegistrationRepository.EventRegistrationCountSummary s : summaries) {
+            statsMap.computeIfAbsent(s.getEventId(), k -> new EnumMap<>(RegistrationStatus.class))
+                    .put(s.getStatus(), s.getCount());
+        }
+
+        return events.stream()
+                .map(event -> toResponseWithCounts(event, statsMap.getOrDefault(event.getId(), Map.of())))
+                .toList();
+    }
+
+    private EventResponse toResponseWithCounts(Event event, Map<RegistrationStatus, Long> counts) {
+        long confirmed = counts.getOrDefault(RegistrationStatus.CONFIRMED, 0L);
+        long pending = counts.getOrDefault(RegistrationStatus.PENDING, 0L);
+        long rejected = counts.getOrDefault(RegistrationStatus.REJECTED, 0L);
+        long cancelled = counts.getOrDefault(RegistrationStatus.CANCELLED, 0L);
+        int totalCap = event.getCapacity() != null ? event.getCapacity() : 0;
+        int available = Math.max(0, totalCap - (int) confirmed);
+
         return EventResponse.builder()
                 .id(event.getId())
                 .title(event.getTitle())
                 .description(event.getDescription())
                 .venueName(event.getVenueName())
-                .isVirtual(event.getIsVirtual())
+                .isVirtual(Boolean.TRUE.equals(event.getIsVirtual()))
                 .virtualLink(event.getVirtualLink())
                 .startTime(event.getStartTime())
                 .endTime(event.getEndTime())
@@ -319,14 +350,61 @@ public class EventService {
                 .status(event.getStatus())
                 .registrationMode(event.getRegistrationMode())
                 .category(event.getCategory())
-                .waitlistEnabled(event.getWaitlistEnabled())
+                .waitlistEnabled(Boolean.TRUE.equals(event.getWaitlistEnabled()))
                 .institutionalOnly(Boolean.TRUE.equals(event.getInstitutionalOnly()))
                 .coverImageUrl(event.getCoverImageUrl())
                 .cancelledReason(event.getCancelledReason())
                 .cancelledAt(event.getCancelledAt())
-                .createdByName(event.getCreatedBy().getName())
+                .createdByName(event.getCreatedBy() != null ? event.getCreatedBy().getName() : null)
+                .createdById(event.getCreatedBy() != null ? event.getCreatedBy().getId() : null)
                 .createdAt(event.getCreatedAt())
                 .updatedAt(event.getUpdatedAt())
+                .confirmedRegistrations(confirmed)
+                .pendingRegistrations(pending)
+                .rejectedRegistrations(rejected)
+                .cancelledRegistrations(cancelled)
+                .availableCapacity(available)
+                .totalCapacity(totalCap)
+                .build();
+    }
+
+    private EventResponse toResponse(Event event) {
+        long confirmed = registrationRepository.countByEventAndStatus(event, RegistrationStatus.CONFIRMED);
+        long pending = registrationRepository.countByEventAndStatus(event, RegistrationStatus.PENDING);
+        long rejected = registrationRepository.countByEventAndStatus(event, RegistrationStatus.REJECTED);
+        long cancelled = registrationRepository.countByEventAndStatus(event, RegistrationStatus.CANCELLED);
+        int totalCap = event.getCapacity() != null ? event.getCapacity() : 0;
+        int available = Math.max(0, totalCap - (int) confirmed);
+
+        return EventResponse.builder()
+                .id(event.getId())
+                .title(event.getTitle())
+                .description(event.getDescription())
+                .venueName(event.getVenueName())
+                .isVirtual(Boolean.TRUE.equals(event.getIsVirtual()))
+                .virtualLink(event.getVirtualLink())
+                .startTime(event.getStartTime())
+                .endTime(event.getEndTime())
+                .registrationDeadline(event.getRegistrationDeadline())
+                .capacity(event.getCapacity())
+                .status(event.getStatus())
+                .registrationMode(event.getRegistrationMode())
+                .category(event.getCategory())
+                .waitlistEnabled(Boolean.TRUE.equals(event.getWaitlistEnabled()))
+                .institutionalOnly(Boolean.TRUE.equals(event.getInstitutionalOnly()))
+                .coverImageUrl(event.getCoverImageUrl())
+                .cancelledReason(event.getCancelledReason())
+                .cancelledAt(event.getCancelledAt())
+                .createdByName(event.getCreatedBy() != null ? event.getCreatedBy().getName() : null)
+                .createdById(event.getCreatedBy() != null ? event.getCreatedBy().getId() : null)
+                .createdAt(event.getCreatedAt())
+                .updatedAt(event.getUpdatedAt())
+                .confirmedRegistrations(confirmed)
+                .pendingRegistrations(pending)
+                .rejectedRegistrations(rejected)
+                .cancelledRegistrations(cancelled)
+                .availableCapacity(available)
+                .totalCapacity(totalCap)
                 .build();
     }
 }

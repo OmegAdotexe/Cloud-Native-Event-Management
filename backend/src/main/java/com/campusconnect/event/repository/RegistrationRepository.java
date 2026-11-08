@@ -7,13 +7,14 @@ import com.campusconnect.user.model.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-
-import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
+@Repository
 public interface RegistrationRepository extends JpaRepository<Registration, Long> {
     
     Optional<Registration> findByEventAndParticipantAndStatusIn(Event event, User participant, List<RegistrationStatus> statuses);
@@ -21,6 +22,8 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
     Optional<Registration> findByEventAndParticipant(Event event, User participant);
     
     int countByEventAndStatus(Event event, RegistrationStatus status);
+
+    int countByEvent(Event event);
     
     Optional<Registration> findFirstByEventAndStatusOrderByRegisteredAtAsc(Event event, RegistrationStatus status);
 
@@ -31,8 +34,27 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
     List<Registration> findByEventIdAndStatusNotIn(Long eventId, List<RegistrationStatus> statuses);
     
     Page<Registration> findByEventAndStatus(Event event, RegistrationStatus status, Pageable pageable);
+
+    @Query("SELECT r FROM Registration r WHERE r.event = :event AND r.status = :status AND " +
+           "(LOWER(r.participant.name) LIKE :search OR LOWER(r.participant.email) LIKE :search OR " +
+           "(r.participant.department IS NOT NULL AND LOWER(r.participant.department) LIKE :search))")
+    Page<Registration> findByEventAndStatusAndSearch(
+            @Param("event") Event event,
+            @Param("status") RegistrationStatus status,
+            @Param("search") String search,
+            Pageable pageable);
+
+    @Query("SELECT r FROM Registration r WHERE r.event = :event AND " +
+           "(LOWER(r.participant.name) LIKE :search OR LOWER(r.participant.email) LIKE :search OR " +
+           "(r.participant.department IS NOT NULL AND LOWER(r.participant.department) LIKE :search))")
+    Page<Registration> findByEventAndSearch(
+            @Param("event") Event event,
+            @Param("search") String search,
+            Pageable pageable);
     
     List<Registration> findByParticipantOrderByRegisteredAtDesc(User participant);
+
+    List<Registration> findByParticipantAndStatusOrderByRegisteredAtDesc(User participant, RegistrationStatus status);
 
     @Query("SELECT COUNT(r) FROM Registration r JOIN r.event e WHERE e.createdBy = :user")
     long countByEventCreatedBy(@Param("user") User user);

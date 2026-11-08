@@ -42,6 +42,15 @@ public class NotificationProducer {
                             "New Participant Registered", registration.getParticipant().getName() + " has registered for your event: " + registration.getEvent().getTitle(), NotificationChannel.IN_APP);
                 }
             }
+
+            // Check if capacity is now reached
+            int confirmed = registrationRepository.countByEventAndStatus(registration.getEvent(), RegistrationStatus.CONFIRMED);
+            if (confirmed >= registration.getEvent().getCapacity()) {
+                sendNotification(registration.getEvent().getCreatedBy().getId(), event.getEventId(), NotificationType.EVENT_CAPACITY_REACHED,
+                        "Event Capacity Reached",
+                        "Your event \"" + registration.getEvent().getTitle() + "\" has reached maximum capacity (" + registration.getEvent().getCapacity() + " attendees).",
+                        NotificationChannel.IN_APP);
+            }
         });
     }
 
@@ -101,7 +110,26 @@ public class NotificationProducer {
             }
             sendNotification(event.getParticipantId(), event.getEventId(), NotificationType.REGISTRATION_CANCELLED,
                     "Registration Cancelled", msg, NotificationChannel.EMAIL);
+
+            // Notify Event Admin when participant cancels
+            Long creatorId = registration.getEvent().getCreatedBy().getId();
+            if (!creatorId.equals(event.getParticipantId())) {
+                sendNotification(creatorId, event.getEventId(), NotificationType.REGISTRATION_CANCELLED,
+                        "Participant Registration Cancelled",
+                        registration.getParticipant().getName() + " cancelled their registration for: " + registration.getEvent().getTitle(),
+                        NotificationChannel.IN_APP);
+            }
         });
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void handleEventCapacityReached(EventCapacityReachedEvent event) {
+        log.info("Sending EVENT_CAPACITY_REACHED notification for event: {}", event.getEventId());
+        sendNotification(event.getAdminId(), event.getEventId(), NotificationType.EVENT_CAPACITY_REACHED,
+                "Event Capacity Reached",
+                "Your event \"" + event.getEventTitle() + "\" has reached its maximum capacity of " + event.getCapacity() + " attendees.",
+                NotificationChannel.IN_APP);
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

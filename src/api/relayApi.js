@@ -113,8 +113,10 @@ export const getSuperAdminDashboard = () => authFetch('/api/analytics/superadmin
 export const getEventAnalytics = (eventId) => authFetch(`/api/analytics/events/${eventId}`);
 // ---------------------------------------------------------------------------
 
-export async function getNotifications(page = 0, size = 20) {
-  return authFetch(`/api/v1/notifications?page=${page}&size=${size}`);
+export async function getNotifications(category = null, page = 0, size = 20) {
+  const params = new URLSearchParams({ page, size });
+  if (category && category !== "ALL") params.append("category", category);
+  return authFetch(`/api/v1/notifications?${params.toString()}`);
 }
 
 export async function getUnreadNotificationCount() {
@@ -249,10 +251,15 @@ export async function rejectRegistration(eventId, registrationId, reason) {
   });
 }
 
-export async function getEventRegistrations(eventId, status, page = 0, size = 10) {
+export async function getEventRegistrations(eventId, status, search, page = 0, size = 10) {
   const params = new URLSearchParams({ page, size });
   if (status) params.append("status", status);
+  if (search && search.trim()) params.append("search", search.trim());
   return authFetch(`/api/events/${eventId}/registrations?${params.toString()}`);
+}
+
+export async function getEventRegistrationStats(eventId) {
+  return authFetch(`/api/events/${eventId}/registrations/stats`);
 }
 
 export async function exportRegistrationsCsv(eventId) {

@@ -66,9 +66,17 @@ public class RegistrationController {
     public ResponseEntity<Page<RegistrationResponse>> getEventRegistrations(
             @PathVariable Long eventId,
             @RequestParam(required = false) RegistrationStatus status,
+            @RequestParam(required = false) String search,
             Pageable pageable,
             @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(registrationService.getEventRegistrations(eventId, status, pageable, user));
+        return ResponseEntity.ok(registrationService.getEventRegistrations(eventId, status, search, pageable, user));
+    }
+
+    @GetMapping("/{eventId}/registrations/stats")
+    public ResponseEntity<com.campusconnect.event.dto.RegistrationStatsResponse> getEventRegistrationStats(
+            @PathVariable Long eventId,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(registrationService.getEventRegistrationStats(eventId, user));
     }
 
     @GetMapping(value = "/{eventId}/registrations/export", produces = "text/csv")

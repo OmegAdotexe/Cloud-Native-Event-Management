@@ -1,6 +1,7 @@
 package com.campusconnect.event.service;
 
 import com.campusconnect.event.dto.RegistrationResponse;
+import com.campusconnect.event.dto.RegistrationStatsResponse;
 import com.campusconnect.event.model.*;
 import com.campusconnect.event.repository.EventInviteRepository;
 import com.campusconnect.event.repository.EventRepository;
@@ -133,6 +134,10 @@ public class RegistrationService {
 
         ensureOwnerOrSuperAdminOrSelf(event, requester, registration.getParticipant().getId());
 
+        if (event.getStartTime() != null && LocalDateTime.now().isAfter(event.getStartTime())) {
+            throw new IllegalStateException("Cannot cancel registration for an event that has already started or concluded.");
+        }
+
         if (registration.getStatus() == RegistrationStatus.CANCELLED || registration.getStatus() == RegistrationStatus.REJECTED) {
             throw new IllegalStateException("Registration is already CANCELLED or REJECTED");
         }
@@ -183,6 +188,10 @@ public class RegistrationService {
         Registration registration = registrationRepository.findById(registrationId)
                 .orElseThrow(() -> new EntityNotFoundException("Registration not found"));
 
+        if (registration.getParticipant().getId().equals(requester.getId())) {
+            throw new AccessDeniedException("Event organizers cannot approve their own registration requests.");
+        }
+
         if (!registration.getEvent().getId().equals(event.getId())) {
             throw new IllegalArgumentException("Registration does not belong to this event");
         }
@@ -200,6 +209,14 @@ public class RegistrationService {
                     event.getId(),
                     registration.getParticipant().getId()
             ));
+            if (confirmedCount + 1 >= event.getCapacity()) {
+                eventPublisher.publishEvent(new EventCapacityReachedEvent(
+                        event.getId(),
+                        event.getCreatedBy().getId(),
+                        event.getTitle(),
+                        event.getCapacity()
+                ));
+            }
         } else if (event.getWaitlistEnabled()) {
             registration.setStatus(RegistrationStatus.WAITLISTED);
             eventPublisher.publishEvent(new RegistrationWaitlistedEvent(
@@ -225,6 +242,14 @@ public class RegistrationService {
 
         Registration registration = registrationRepository.findById(registrationId)
                 .orElseThrow(() -> new EntityNotFoundException("Registration not found"));
+
+        if (registration.getParticipant().getId().equals(requester.getId())) {
+            throw new AccessDeniedException("Event organizers cannot reject their own registration requests.");
+        }
+
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new IllegalArgumentException("A rejection reason is required.");
+        }
 
         if (!registration.getEvent().getId().equals(event.getId())) {
             throw new IllegalArgumentException("Registration does not belong to this event");
@@ -265,20 +290,56 @@ public class RegistrationService {
         }
     }
 
-    public Page<RegistrationResponse> getEventRegistrations(Long eventId, RegistrationStatus status, Pageable pageable, User requester) {
+    public Page<RegistrationResponse> getEventRegistrations(Long eventId, RegistrationStatus status, String search, Pageable pageable, User requester) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new EntityNotFoundException("Event not found"));
 
         ensureOwnerOrSuperAdmin(event, requester);
 
+        boolean hasSearch = search != null && !search.trim().isEmpty();
+        String searchPattern = hasSearch ? "%" + search.trim().toLowerCase() + "%" : null;
+
         Page<Registration> page;
-        if (status != null) {
+        if (status != null && hasSearch) {
+            page = registrationRepository.findByEventAndStatusAndSearch(event, status, searchPattern, pageable);
+        } else if (status != null) {
             page = registrationRepository.findByEventAndStatus(event, status, pageable);
+        } else if (hasSearch) {
+            page = registrationRepository.findByEventAndSearch(event, searchPattern, pageable);
         } else {
             page = registrationRepository.findByEvent(event, pageable);
         }
 
         return page.map(this::toResponse);
+    }
+
+    public RegistrationStatsResponse getEventRegistrationStats(Long eventId, User requester) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EntityNotFoundException("Event not found"));
+
+        ensureOwnerOrSuperAdmin(event, requester);
+
+        int capacity = event.getCapacity() != null ? event.getCapacity() : 0;
+        int confirmed = registrationRepository.countByEventAndStatus(event, RegistrationStatus.CONFIRMED);
+        int pending = registrationRepository.countByEventAndStatus(event, RegistrationStatus.PENDING);
+        int rejected = registrationRepository.countByEventAndStatus(event, RegistrationStatus.REJECTED);
+        int cancelled = registrationRepository.countByEventAndStatus(event, RegistrationStatus.CANCELLED);
+        int waitlisted = registrationRepository.countByEventAndStatus(event, RegistrationStatus.WAITLISTED);
+        int total = confirmed + pending + rejected + cancelled + waitlisted;
+        int remaining = Math.max(0, capacity - confirmed);
+
+        return RegistrationStatsResponse.builder()
+                .eventId(event.getId())
+                .eventTitle(event.getTitle())
+                .capacity(capacity)
+                .confirmed(confirmed)
+                .pending(pending)
+                .rejected(rejected)
+                .cancelled(cancelled)
+                .waitlisted(waitlisted)
+                .total(total)
+                .remainingCapacity(remaining)
+                .build();
     }
 
     public String exportRegistrationsCsv(Long eventId, User requester) {
@@ -288,11 +349,13 @@ public class RegistrationService {
         
         List<Registration> registrations = registrationRepository.findByEventOrderByRegisteredAtDesc(event);
         StringBuilder sb = new StringBuilder();
-        sb.append("Registration ID,Participant ID,Participant Name,Status,Registered At,Cancelled At,Reason\n");
+        sb.append("Registration ID,Participant ID,Participant Name,Participant Email,Department,Status,Registered At,Cancelled At,Reason\n");
         for (Registration r : registrations) {
             sb.append(r.getId()).append(",")
               .append(r.getParticipant().getId()).append(",")
               .append("\"").append(r.getParticipant().getName().replace("\"", "\"\"")).append("\",")
+              .append("\"").append(r.getParticipant().getEmail().replace("\"", "\"\"")).append("\",")
+              .append("\"").append(r.getParticipant().getDepartment() != null ? r.getParticipant().getDepartment().replace("\"", "\"\"") : "").append("\",")
               .append(r.getStatus().name()).append(",")
               .append(r.getRegisteredAt()).append(",")
               .append(r.getCancelledAt() != null ? r.getCancelledAt() : "").append(",")
@@ -324,13 +387,18 @@ public class RegistrationService {
                 .eventId(registration.getEvent().getId())
                 .eventTitle(registration.getEvent().getTitle())
                 .eventStartTime(registration.getEvent().getStartTime())
+                .eventEndTime(registration.getEvent().getEndTime())
                 .eventStatus(registration.getEvent().getStatus().name())
+                .eventCategory(registration.getEvent().getCategory() != null ? registration.getEvent().getCategory().name() : null)
                 .eventVenueName(registration.getEvent().getVenueName())
                 .eventIsVirtual(registration.getEvent().getIsVirtual())
                 .eventVirtualLink(registration.getEvent().getVirtualLink())
                 .eventRegistrationMode(registration.getEvent().getRegistrationMode().name())
+                .eventCoverImageUrl(registration.getEvent().getCoverImageUrl())
                 .participantId(registration.getParticipant().getId())
                 .participantName(registration.getParticipant().getName())
+                .participantEmail(registration.getParticipant().getEmail())
+                .participantDepartment(registration.getParticipant().getDepartment())
                 .status(registration.getStatus())
                 .registeredAt(registration.getRegisteredAt())
                 .respondedAt(registration.getRespondedAt())

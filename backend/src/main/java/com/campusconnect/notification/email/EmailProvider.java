@@ -36,12 +36,17 @@ public class EmailProvider {
      * Maps each NotificationType to its Thymeleaf template name (without the
      * {@code email/} prefix or {@code .html} suffix).
      */
-    private static final Map<NotificationType, String> TEMPLATE_MAP = Map.of(
-            NotificationType.REGISTRATION_CONFIRMED, "registration-confirmed",
-            NotificationType.REGISTRATION_CANCELLED, "registration-cancelled",
-            NotificationType.REGISTRATION_REJECTED,  "registration-rejected",
-            NotificationType.EVENT_CANCELLED,         "event-cancelled",
-            NotificationType.TIMELINE_UPDATED,        "timeline-updated"
+    private static final Map<NotificationType, String> TEMPLATE_MAP = Map.ofEntries(
+            Map.entry(NotificationType.REGISTRATION_CONFIRMED, "registration-confirmed"),
+            Map.entry(NotificationType.REGISTRATION_CANCELLED, "registration-cancelled"),
+            Map.entry(NotificationType.REGISTRATION_REJECTED,  "registration-rejected"),
+            Map.entry(NotificationType.REGISTRATION_PENDING,   "registration-pending"),
+            Map.entry(NotificationType.EVENT_CANCELLED,         "event-cancelled"),
+            Map.entry(NotificationType.EVENT_UPDATED,           "event-updated"),
+            Map.entry(NotificationType.EVENT_VENUE_CHANGED,     "event-updated"),
+            Map.entry(NotificationType.EVENT_TIME_CHANGED,      "event-updated"),
+            Map.entry(NotificationType.TIMELINE_UPDATED,        "timeline-updated"),
+            Map.entry(NotificationType.EVENT_REMINDER,          "event-reminder")
     );
 
     /**

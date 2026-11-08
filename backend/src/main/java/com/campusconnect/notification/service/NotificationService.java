@@ -9,6 +9,7 @@ import com.campusconnect.user.model.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +29,50 @@ public class NotificationService {
             NotificationType.REGISTRATION_CANCELLED
     );
 
-    public Page<NotificationResponse> getNotifications(User user, Pageable pageable) {
+    private static final List<NotificationType> REGISTRATION_TYPES = List.of(
+            NotificationType.REGISTRATION_CONFIRMED,
+            NotificationType.REGISTRATION_WAITLISTED,
+            NotificationType.REGISTRATION_REJECTED,
+            NotificationType.REGISTRATION_CANCELLED,
+            NotificationType.REGISTRATION_PENDING
+    );
+
+    private static final List<NotificationType> EVENT_TYPES = List.of(
+            NotificationType.EVENT_PUBLISHED,
+            NotificationType.EVENT_CANCELLED,
+            NotificationType.EVENT_VENUE_CHANGED,
+            NotificationType.EVENT_TIME_CHANGED,
+            NotificationType.EVENT_UPDATED,
+            NotificationType.TIMELINE_UPDATED,
+            NotificationType.EVENT_REMINDER,
+            NotificationType.EVENT_CAPACITY_REACHED
+    );
+
+    private static final List<NotificationType> ADMIN_TYPES = List.of(
+            NotificationType.ADMIN_APPLICATION_SUBMITTED,
+            NotificationType.ADMIN_APPLICATION_RECEIVED,
+            NotificationType.ADMIN_APPLICATION_APPROVED,
+            NotificationType.ADMIN_APPLICATION_REJECTED,
+            NotificationType.ADMIN_PRIVILEGES_REVOKED,
+            NotificationType.ADMIN_PRIVILEGES_SUSPENDED
+    );
+
+    public Page<NotificationResponse> getNotifications(User user, String category, Pageable pageable) {
+        if (category != null && !category.trim().isEmpty() && !category.equalsIgnoreCase("ALL")) {
+            String cat = category.trim().toUpperCase();
+            List<NotificationType> types = switch (cat) {
+                case "REGISTRATIONS" -> REGISTRATION_TYPES;
+                case "EVENTS" -> EVENT_TYPES;
+                case "ADMIN" -> ADMIN_TYPES;
+                default -> null;
+            };
+
+            if (types != null) {
+                return notificationRepository.findByRecipientAndTypeInOrderByCreatedAtDesc(user, types, pageable)
+                        .map(this::toResponse);
+            }
+        }
+
         if (user.getRole() == Role.SUPER_ADMIN) {
             return notificationRepository.findByRecipientAndTypeNotInOrderByCreatedAtDesc(user, PARTICIPANT_ROUTINE_TYPES, pageable)
                     .map(this::toResponse);
@@ -47,10 +91,10 @@ public class NotificationService {
     @Transactional
     public void markAsRead(Long id, User user) {
         Notification notification = notificationRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Notification not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Notification not found: " + id));
                 
         if (!notification.getRecipient().getId().equals(user.getId())) {
-            throw new IllegalArgumentException("Access denied");
+            throw new AccessDeniedException("You do not have permission to view or modify this notification.");
         }
         
         if (notification.getReadAt() == null) {

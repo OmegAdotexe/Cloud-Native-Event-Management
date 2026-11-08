@@ -12,6 +12,8 @@ public enum NotificationType {
     EVENT_TIME_CHANGED,
     EVENT_UPDATED,
     TIMELINE_UPDATED,
+    EVENT_REMINDER,
+    EVENT_CAPACITY_REACHED,
     // Phase 3: Admin Approval & Application Notification Types
     ADMIN_APPLICATION_SUBMITTED,
     ADMIN_APPLICATION_RECEIVED,

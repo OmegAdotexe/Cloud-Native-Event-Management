@@ -1,6 +1,7 @@
 package com.campusconnect.notification.repository;
 
 import com.campusconnect.notification.model.Notification;
+import com.campusconnect.notification.model.NotificationType;
 import com.campusconnect.user.model.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -9,16 +10,20 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
+
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
     Page<Notification> findByRecipientOrderByCreatedAtDesc(User recipient, Pageable pageable);
 
-    Page<Notification> findByRecipientAndTypeNotInOrderByCreatedAtDesc(User recipient, java.util.Collection<com.campusconnect.notification.model.NotificationType> types, Pageable pageable);
+    Page<Notification> findByRecipientAndTypeNotInOrderByCreatedAtDesc(User recipient, Collection<NotificationType> types, Pageable pageable);
+
+    Page<Notification> findByRecipientAndTypeInOrderByCreatedAtDesc(User recipient, Collection<NotificationType> types, Pageable pageable);
     
     @Query("SELECT COUNT(n) FROM Notification n WHERE n.recipient = :recipient AND n.readAt IS NULL")
     long countUnreadByRecipient(@Param("recipient") User recipient);
 
     @Query("SELECT COUNT(n) FROM Notification n WHERE n.recipient = :recipient AND n.readAt IS NULL AND n.type NOT IN :types")
-    long countUnreadByRecipientAndTypeNotIn(@Param("recipient") User recipient, @Param("types") java.util.Collection<com.campusconnect.notification.model.NotificationType> types);
+    long countUnreadByRecipientAndTypeNotIn(@Param("recipient") User recipient, @Param("types") Collection<NotificationType> types);
 
     @Modifying
     @Query("UPDATE Notification n SET n.readAt = CURRENT_TIMESTAMP, n.status = 'READ' WHERE n.recipient = :recipient AND n.readAt IS NULL")

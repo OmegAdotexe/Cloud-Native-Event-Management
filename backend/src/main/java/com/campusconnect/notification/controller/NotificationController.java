@@ -20,9 +20,10 @@ public class NotificationController {
 
     @GetMapping
     public ResponseEntity<Page<NotificationResponse>> getNotifications(
+            @RequestParam(required = false) String category,
             @AuthenticationPrincipal User user,
             Pageable pageable) {
-        return ResponseEntity.ok(notificationService.getNotifications(user, pageable));
+        return ResponseEntity.ok(notificationService.getNotifications(user, category, pageable));
     }
 
     @GetMapping("/unread-count")

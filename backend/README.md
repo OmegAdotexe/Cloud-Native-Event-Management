@@ -46,14 +46,37 @@ mvn clean package
 ```
 
 ### 4. Run the Backend
-To run with demo accounts pre-seeded, activate the `dev` profile:
+
+#### Option A: With Docker Infrastructure (PostgreSQL + RabbitMQ + MailHog)
+Ensure `docker compose up -d` is running.
+
+**PowerShell (Windows)**:
+```powershell
+# Pre-seeded with demo accounts:
+mvn spring-boot:run "-Dspring-boot.run.profiles=dev"
+
+# Or setting the environment variable:
+$env:SPRING_PROFILES_ACTIVE="dev"; mvn spring-boot:run
+```
+
+**Bash / CMD**:
 ```bash
 mvn -Dspring-boot.run.profiles=dev spring-boot:run
 ```
 
-Without the `dev` profile (clean production-like startup):
+> **Note for PowerShell Users**: Always enclose `-Dspring-boot.run.profiles=...` in quotes (e.g., `"-Dspring-boot.run.profiles=dev"`). Otherwise, PowerShell treats the dot (`.run`) as a member access token and throws `Unknown lifecycle phase ".run.profiles=dev"`.
+
+#### Option B: Standalone Without Docker (In-Memory H2 Mode)
+If you don't have Docker installed or running, you can boot the backend immediately using the `local` profile (uses an embedded in-memory H2 database with schema auto-generated):
+
+**PowerShell (Windows)**:
+```powershell
+mvn spring-boot:run "-Dspring-boot.run.profiles=local,dev"
+```
+
+**Bash / CMD**:
 ```bash
-mvn spring-boot:run
+mvn -Dspring-boot.run.profiles=local,dev spring-boot:run
 ```
 
 ---

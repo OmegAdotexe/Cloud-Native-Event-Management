@@ -5,7 +5,7 @@ echo ========================================================
 
 REM 1. Stop docker containers
 echo Stopping PostgreSQL and MailHog containers...
-docker stop campusconnect-postgres campusconnect-mailhog >nul 2>&1
+docker stop campusconnect-postgres campusconnect-rabbitmq campusconnect-mailhog >nul 2>&1
 
 REM 2. Terminate background processes on port 8080 (backend) and 5173 (frontend)
 echo Stopping Java backend and Node frontend processes...

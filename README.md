@@ -50,10 +50,46 @@ All accounts use the password: **`password`**
 
 ## 🚀 How to Start and Stop Locally
 
-From the root `EMS` directory, run:
-- **`start.bat`**: Starts PostgreSQL & MailHog containers, launches the Spring Boot backend server, and starts the Vite frontend dev server.
-- **`stop.bat`**: Shuts down the Docker containers and terminates background dev servers cleanly.
-- **`start-dev.ps1`**: PowerShell alternative with automated Java 25 detection and health checks.
+### Quick One-Click Startup (Windows)
+From the project root directory:
+- **`start.bat`** (or `./start-dev.ps1` in PowerShell): Launches PostgreSQL, RabbitMQ, and MailHog containers via Docker, starts the Spring Boot backend server, and starts the Vite frontend dev server in separate windows.
+- **`stop.bat`**: Shuts down the Docker containers and terminates dev servers.
+
+---
+
+### Manual Startup
+
+#### Step 1: Start Infrastructure (Docker)
+```bash
+cd backend
+docker compose up -d
+```
+*(Verify services are running with `docker compose ps`)*
+
+#### Step 2: Start Backend API
+From the `backend` directory:
+
+- **PowerShell (Windows)**:
+  ```powershell
+  mvn spring-boot:run "-Dspring-boot.run.profiles=dev"
+  ```
+- **Bash / CMD**:
+  ```bash
+  mvn -Dspring-boot.run.profiles=dev spring-boot:run
+  ```
+
+> **Running Without Docker (Standalone In-Memory H2 Mode)**:
+> If you don't have Docker installed or running, you can boot the backend with embedded H2:
+> ```powershell
+> mvn spring-boot:run "-Dspring-boot.run.profiles=local,dev"
+> ```
+
+#### Step 3: Start Frontend
+From the repository root:
+```bash
+npm install
+npm run dev
+```
 
 ---
 
@@ -86,6 +122,6 @@ mvn test
 
 - **Frontend**: React 18, Vite, React Router, Recharts, Lucide Icons (`src/`)
 - **Backend**: Spring Boot 3.3.4, Java 25 LTS, Spring Security + JWT, Spring Data JPA, Springdoc OpenAPI (`backend/`)
-- **Database**: PostgreSQL 15 (`campusconnect-postgres` Docker container on port `5433`)
+- **Database**: PostgreSQL 15 (`campusconnect-postgres` Docker container on port `5432`)
 - **Message Broker**: RabbitMQ 4.4.0 on port `5672`
 - **Email Server**: MailHog on port `1025` (SMTP) & `8025` (Web UI)

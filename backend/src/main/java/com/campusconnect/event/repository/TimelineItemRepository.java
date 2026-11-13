@@ -8,4 +8,5 @@ import java.util.List;
 
 public interface TimelineItemRepository extends JpaRepository<TimelineItem, Long> {
     List<TimelineItem> findByEventOrderByStartTimeAsc(Event event);
+    void deleteByEvent(Event event);
 }

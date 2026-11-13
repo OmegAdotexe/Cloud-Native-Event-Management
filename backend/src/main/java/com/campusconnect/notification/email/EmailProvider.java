@@ -32,6 +32,9 @@ public class EmailProvider {
     @Value("${app.email.from}")
     private String fromAddress;
 
+    @Value("${app.email.enabled:true}")
+    private boolean emailEnabled;
+
     /**
      * Maps each NotificationType to its Thymeleaf template name (without the
      * {@code email/} prefix or {@code .html} suffix).
@@ -79,5 +82,40 @@ public class EmailProvider {
 
         mailSender.send(mimeMessage);
         log.info("Email sent to {} [type={}, template={}]", recipientEmail, type, templateName);
+    }
+
+    /**
+     * Send an HTML password reset email.
+     *
+     * @param recipientEmail recipient email address
+     * @param resetUrl       the full password reset link URL
+     * @param expirationMinutes expiration duration in minutes
+     */
+    public void sendPasswordResetEmail(String recipientEmail, String resetUrl, int expirationMinutes) {
+        if (!emailEnabled) {
+            log.info("[Password Reset] Email dispatch is disabled. Reset URL for {}: {}", recipientEmail, resetUrl);
+            return;
+        }
+
+        try {
+            Context ctx = new Context();
+            ctx.setVariable("title", "Password Reset Request");
+            ctx.setVariable("resetUrl", resetUrl);
+            ctx.setVariable("expirationMinutes", expirationMinutes);
+
+            String htmlBody = templateEngine.process("email/password-reset", ctx);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            helper.setFrom(fromAddress != null ? fromAddress : "noreply@campusconnect.dev");
+            helper.setTo(recipientEmail);
+            helper.setSubject("Reset Your CampusConnect Password");
+            helper.setText(htmlBody, true);
+
+            mailSender.send(mimeMessage);
+            log.info("Password reset email successfully sent to {}", recipientEmail);
+        } catch (Exception ex) {
+            log.error("Failed to deliver password reset email to {}. Reset URL was: {}. Error: {}", recipientEmail, resetUrl, ex.getMessage());
+        }
     }
 }

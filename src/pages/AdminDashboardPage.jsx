@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import * as relayApi from "../api/relayApi.js";
 import { 
   Calendar, CheckCircle2, Users, Clock, Plus, ArrowRight,
-  ShieldCheck, Eye, Edit, AlertCircle, FileText
+  ShieldCheck, Eye, Edit, AlertCircle, FileText, Trash2
 } from "lucide-react";
 import { getEventCoverImage, handleImageError } from "../data/eventAssets.js";
 
@@ -53,14 +53,19 @@ export default function AdminDashboardPage({ events = [], isLoading, error, onRe
     }
   };
 
-  // Filter events belonging to or created by this organizer
-  const myEvents = events.filter(e => 
-    e.createdById === user?.id || 
-    (e.createdByName && user?.name && e.createdByName.toLowerCase() === user.name.toLowerCase()) ||
-    (e.organizerClub && user?.email && e.organizerClub.toLowerCase().includes(user.email.split("@")[0].toLowerCase()))
-  );
-  const displayEvents = myEvents.length > 0 ? myEvents : events;
-  const recentOrganizerEvents = displayEvents.slice(0, 5);
+  const handleDeleteEvent = async (eventId, eventTitle) => {
+    if (window.confirm(`Are you sure you want to delete "${eventTitle || 'this event'}"? This action will permanently remove the event from the database.`)) {
+      try {
+        setActionError("");
+        await relayApi.deleteEvent(eventId);
+        if (onRefresh) await onRefresh();
+      } catch (err) {
+        setActionError(err.message || "Failed to delete event.");
+      }
+    }
+  };
+
+  const displayEvents = events;
 
   return (
     <div>
@@ -298,8 +303,10 @@ export default function AdminDashboardPage({ events = [], isLoading, error, onRe
         <div className="relay-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
             <div>
-              <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--text)" }}>My Campus Sessions</div>
-              <div style={{ fontSize: "12px", color: "var(--mute)" }}>Events organized and managed by your society</div>
+              <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--text)" }}>Campus Events Directory</div>
+              <div style={{ fontSize: "12px", color: "var(--mute)" }}>
+                {isLoading ? "Fetching events from database..." : `${displayEvents.length} Event${displayEvents.length === 1 ? "" : "s"} stored in the database`}
+              </div>
             </div>
             <button
               type="button"
@@ -307,28 +314,54 @@ export default function AdminDashboardPage({ events = [], isLoading, error, onRe
               onClick={() => navigate("/events")}
               style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12.5px" }}
             >
-              View All Events <ArrowRight size={13} />
+              Full Workspace <ArrowRight size={13} />
             </button>
           </div>
 
-          {recentOrganizerEvents.length === 0 ? (
-            <div className="relay-empty" style={{ padding: "30px 0" }}>No events organized yet. Click "Create Event" to launch one!</div>
-          ) : (
+          {isLoading && (
+            <div className="relay-empty" style={{ padding: "40px 0" }}>
+              <Clock size={28} style={{ color: "var(--primary)", margin: "0 auto 10px" }} />
+              <p>Loading events from database...</p>
+            </div>
+          )}
+
+          {error && (
+            <div className="relay-empty" style={{ padding: "30px 0", color: "var(--coral)" }}>
+              <AlertCircle size={28} style={{ color: "var(--coral)", margin: "0 auto 10px" }} />
+              <p>{error}</p>
+              {onRefresh && (
+                <button type="button" className="relay-btn-ghost relay-btn-sm" onClick={onRefresh} style={{ marginTop: "10px" }}>
+                  Retry
+                </button>
+              )}
+            </div>
+          )}
+
+          {!isLoading && !error && displayEvents.length === 0 && (
+            <div className="relay-empty" style={{ padding: "40px 0" }}>
+              <Calendar size={32} style={{ color: "var(--mute)", margin: "0 auto 10px" }} />
+              <p>No events found in the database. Click "Create Event" to launch one!</p>
+            </div>
+          )}
+
+          {!isLoading && !error && displayEvents.length > 0 && (
             <div className="relay-table-wrap">
               <table className="relay-table">
                 <thead>
                   <tr>
                     <th style={{ width: "48px" }}>Cover</th>
-                    <th>Event Title</th>
+                    <th>Event Details</th>
+                    <th>Category</th>
+                    <th>Organizer</th>
                     <th>Date & Time</th>
                     <th>Venue</th>
                     <th>Registrations</th>
                     <th>Status</th>
-                    <th style={{ textAlign: "right" }}>Manage</th>
+                    <th style={{ textAlign: "right" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {recentOrganizerEvents.map((ev) => {
+                  {displayEvents.map((ev) => {
                     const coverImg = getEventCoverImage(ev);
                     return (
                       <tr key={ev.id}>
@@ -337,25 +370,48 @@ export default function AdminDashboardPage({ events = [], isLoading, error, onRe
                             src={coverImg}
                             alt=""
                             onError={handleImageError}
-                            style={{ width: "36px", height: "36px", borderRadius: "6px", objectFit: "cover" }}
+                            style={{ width: "38px", height: "38px", borderRadius: "6px", objectFit: "cover" }}
                           />
                         </td>
-                        <td>
+                        <td style={{ maxWidth: "260px" }}>
                           <div style={{ fontWeight: 600, color: "var(--text)", fontSize: "13px" }}>
                             {ev.title}
                           </div>
-                          <div style={{ fontSize: "11px", color: "var(--mute)" }}>
-                            {ev.category || "General"}
-                          </div>
+                          {ev.description && (
+                            <div style={{ fontSize: "11px", color: "var(--mute)", marginTop: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {ev.description}
+                            </div>
+                          )}
                         </td>
                         <td>
-                          <span style={{ fontSize: "12px", color: "var(--text)" }}>
-                            {new Date(ev.startTime).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          <span style={{
+                            fontSize: "11px",
+                            padding: "2px 7px",
+                            borderRadius: "6px",
+                            fontWeight: 600,
+                            background: "var(--bg)",
+                            color: "var(--text-secondary)",
+                            border: "1px solid var(--border)"
+                          }}>
+                            {ev.category || "OTHER"}
                           </span>
                         </td>
                         <td>
                           <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-                            {ev.venueName || "Online"}
+                            {ev.createdByName || ev.organizerClub || "Campus Organizer"}
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ fontSize: "12px", color: "var(--text)", fontWeight: 500 }}>
+                            {new Date(ev.startTime).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          </div>
+                          <div style={{ fontSize: "11px", color: "var(--mute)" }}>
+                            {new Date(ev.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </div>
+                        </td>
+                        <td>
+                          <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                            {ev.isVirtual ? "Virtual / Online" : (ev.venueName || "Online")}
                           </span>
                         </td>
                         <td>
@@ -363,19 +419,19 @@ export default function AdminDashboardPage({ events = [], isLoading, error, onRe
                             <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                               <span style={{ fontSize: "11px", color: "var(--coral)", fontWeight: 700 }}>Inactive (Cancelled)</span>
                               <span style={{ fontSize: "11.5px", color: "var(--mute)" }}>
-                                {ev.confirmedRegistrations || 0} Confirmed / {ev.capacity} Capacity
+                                {ev.confirmedRegistrations || 0} / {ev.capacity}
                               </span>
                             </div>
                           ) : (
                             <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                              <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text)" }}>
+                              <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--text)" }}>
                                 <span style={{ color: "var(--teal)" }}>{ev.confirmedRegistrations || 0} Confirmed</span>
-                                <span style={{ color: "var(--mute)", fontWeight: 400 }}> / {ev.capacity} Capacity</span>
+                                <span style={{ color: "var(--mute)", fontWeight: 400 }}> / {ev.capacity}</span>
                               </div>
-                              <div style={{ display: "flex", gap: "6px", alignItems: "center", fontSize: "11px", color: "var(--mute)", flexWrap: "wrap" }}>
+                              <div style={{ display: "flex", gap: "6px", alignItems: "center", fontSize: "10.5px", color: "var(--mute)", flexWrap: "wrap" }}>
                                 <span>{ev.availableCapacity ?? Math.max(0, (ev.capacity || 0) - (ev.confirmedRegistrations || 0))} Available</span>
                                 {ev.pendingRegistrations > 0 && (
-                                  <span style={{ color: "var(--amber)", fontWeight: 700, background: "rgba(245, 158, 11, 0.12)", padding: "1px 6px", borderRadius: "4px" }}>
+                                  <span style={{ color: "var(--amber)", fontWeight: 700, background: "rgba(245, 158, 11, 0.12)", padding: "1px 5px", borderRadius: "4px" }}>
                                     {ev.pendingRegistrations} Pending
                                   </span>
                                 )}
@@ -393,14 +449,25 @@ export default function AdminDashboardPage({ events = [], isLoading, error, onRe
                           </span>
                         </td>
                         <td style={{ textAlign: "right" }}>
-                          <button
-                            type="button"
-                            className="relay-btn-ghost relay-btn-sm"
-                            onClick={() => navigate("/events", { state: { editEventId: ev.id } })}
-                            style={{ fontSize: "11.5px", padding: "3px 8px" }}
-                          >
-                            Edit
-                          </button>
+                          <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                            <button
+                              type="button"
+                              className="relay-btn-ghost relay-btn-sm"
+                              onClick={() => navigate("/events", { state: { editEventId: ev.id } })}
+                              style={{ fontSize: "11.5px", padding: "3px 8px" }}
+                            >
+                              <Edit size={12} style={{ marginRight: "3px" }} /> Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="relay-btn-danger relay-btn-sm"
+                              onClick={() => handleDeleteEvent(ev.id, ev.title)}
+                              style={{ fontSize: "11.5px", padding: "3px 8px" }}
+                              title="Delete event"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

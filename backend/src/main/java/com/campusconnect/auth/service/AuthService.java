@@ -1,16 +1,24 @@
 package com.campusconnect.auth.service;
 
 import com.campusconnect.auth.dto.*;
+import com.campusconnect.auth.model.PasswordResetToken;
+import com.campusconnect.auth.repository.PasswordResetTokenRepository;
+import com.campusconnect.notification.email.EmailProvider;
 import com.campusconnect.user.model.User;
 import com.campusconnect.user.model.Role;
 import com.campusconnect.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +30,11 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final GoogleTokenVerifierService googleTokenVerifierService;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final EmailProvider emailProvider;
+
+    @Value("${app.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -204,6 +217,105 @@ public class AuthService {
 
         existing.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(existing);
+    }
+
+    @Transactional
+    public String requestPasswordReset(ForgotPasswordRequest request) {
+        if (request.getEmail() == null || request.getEmail().isBlank()) {
+            return null;
+        }
+
+        String normalizedEmail = request.getEmail().toLowerCase().trim();
+        Optional<User> userOpt = userRepository.findByEmail(normalizedEmail);
+
+        if (userOpt.isEmpty()) {
+            // SECURITY: Do not leak whether the email is registered
+            log.info("Password reset requested for non-existent email: {}", normalizedEmail);
+            return null;
+        }
+
+        User user = userOpt.get();
+
+        if ("GOOGLE".equalsIgnoreCase(user.getAuthProvider())) {
+            log.info("Password reset requested for Google-authenticated user: {}. Suppressing local password reset.", normalizedEmail);
+            return null;
+        }
+
+        String baseUrl = (frontendUrl != null && !frontendUrl.isBlank()) ? frontendUrl.replaceAll("/+$", "") : "http://localhost:5173";
+
+        // Rate limiting check: if requested within last 15 seconds, reuse existing active token
+        Optional<PasswordResetToken> lastTokenOpt = passwordResetTokenRepository.findTopByUserOrderByCreatedAtDesc(user);
+        if (lastTokenOpt.isPresent()) {
+            LocalDateTime recentThreshold = LocalDateTime.now().minusSeconds(15);
+            PasswordResetToken existing = lastTokenOpt.get();
+            if (existing.getCreatedAt() != null && existing.getCreatedAt().isAfter(recentThreshold) && !existing.isUsed() && !existing.isExpired()) {
+                log.info("Reusing recent password reset token for user: {}", normalizedEmail);
+                return baseUrl + "/reset-password?token=" + existing.getToken();
+            }
+        }
+
+        // Invalidate previous active tokens for this user
+        passwordResetTokenRepository.invalidateAllActiveTokensForUser(user);
+
+        // Generate a secure random token
+        String token = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", "");
+        int expirationMinutes = 15;
+        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(expirationMinutes);
+
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+                .user(user)
+                .token(token)
+                .expiresAt(expiresAt)
+                .used(false)
+                .build();
+
+        passwordResetTokenRepository.save(resetToken);
+
+        String resetUrl = baseUrl + "/reset-password?token=" + token;
+
+        log.info("Generated password reset token for user: {}. Reset link: {}", normalizedEmail, resetUrl);
+        emailProvider.sendPasswordResetEmail(user.getEmail(), resetUrl, expirationMinutes);
+
+        return resetUrl;
+    }
+
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        if (request.getNewPassword() == null || request.getConfirmPassword() == null) {
+            throw new IllegalArgumentException("Both new password and confirm password are required.");
+        }
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new IllegalArgumentException("Passwords do not match.");
+        }
+
+        if (request.getNewPassword().length() < 6) {
+            throw new IllegalArgumentException("Password must be at least 6 characters.");
+        }
+
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(request.getToken())
+                .orElseThrow(() -> new IllegalArgumentException("Invalid or unrecognized password reset token."));
+
+        if (resetToken.isUsed()) {
+            throw new IllegalArgumentException("This password reset link has already been used. Please request a new one.");
+        }
+
+        if (resetToken.isExpired()) {
+            throw new IllegalArgumentException("This password reset link has expired. Please request a new one.");
+        }
+
+        User user = resetToken.getUser();
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        // Mark token as used
+        resetToken.setUsed(true);
+        passwordResetTokenRepository.save(resetToken);
+
+        // Invalidate any other active tokens
+        passwordResetTokenRepository.invalidateAllActiveTokensForUser(user);
+
+        log.info("Password successfully reset for user: {}", user.getEmail());
     }
 
     public UserDto toDto(User user) {

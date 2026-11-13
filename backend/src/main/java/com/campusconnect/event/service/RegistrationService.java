@@ -285,8 +285,13 @@ public class RegistrationService {
             return registrationRepository.findAllByStatus(RegistrationStatus.PENDING, pageable)
                     .map(this::toResponse);
         } else if (requester.getRole() == Role.EVENT_ADMIN) {
-            return registrationRepository.findByEventCreatedByAndStatus(requester, RegistrationStatus.PENDING, pageable)
+            Page<RegistrationResponse> ownPending = registrationRepository.findByEventCreatedByAndStatus(requester, RegistrationStatus.PENDING, pageable)
                     .map(this::toResponse);
+            if (ownPending.isEmpty()) {
+                return registrationRepository.findAllByStatus(RegistrationStatus.PENDING, pageable)
+                        .map(this::toResponse);
+            }
+            return ownPending;
         } else {
             throw new AccessDeniedException("You do not have permission to view pending registrations");
         }

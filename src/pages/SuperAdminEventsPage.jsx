@@ -4,7 +4,7 @@ import {
   Calendar, CheckCircle2, Users, Clock, Search, 
   Plus, BarChart2, Eye, Edit,
   LayoutGrid, List, RotateCcw, MoreVertical, ChevronDown, ChevronRight, Copy,
-  AlertTriangle, X
+  AlertTriangle, X, Trash2
 } from "lucide-react";
 import { getEventCoverImage, handleImageError } from "../data/eventAssets.js";
 import * as relayApi from "../api/relayApi.js";
@@ -41,6 +41,40 @@ export default function SuperAdminEventsPage({ events = [], isLoading, error, on
       setResolvingMsg(err.message || "Failed to deactivate duplicate");
     } finally {
       setResolvingLoading(false);
+    }
+  };
+
+  const handleDeleteDuplicate = async (dupId) => {
+    if (window.confirm("Permanently delete this duplicate event record from the database? This cannot be undone.")) {
+      try {
+        setResolvingLoading(true);
+        await relayApi.deleteEvent(dupId);
+        setResolvingMsg("Duplicate record permanently deleted from database.");
+        if (onRefresh) await onRefresh();
+        setResolvingDuplicateGroup(prev => {
+          if (!prev) return null;
+          const updated = prev.items.filter(it => it.id !== dupId);
+          if (updated.length <= 1) {
+            return null; // All duplicates resolved!
+          }
+          return { ...prev, items: updated, count: updated.length, hasDuplicates: updated.length > 1 };
+        });
+      } catch (err) {
+        setResolvingMsg(err.message || "Failed to delete duplicate record");
+      } finally {
+        setResolvingLoading(false);
+      }
+    }
+  };
+
+  const handleDeleteEvent = async (eventId, eventTitle) => {
+    if (window.confirm(`Are you sure you want to delete "${eventTitle || 'this event'}"? This action cannot be undone.`)) {
+      try {
+        await relayApi.deleteEvent(eventId);
+        if (onRefresh) await onRefresh();
+      } catch (err) {
+        alert(err.message || "Unable to delete event.");
+      }
     }
   };
 
@@ -95,7 +129,8 @@ export default function SuperAdminEventsPage({ events = [], isLoading, error, on
     const s = e.startTime ? e.startTime.slice(0, 16) : "";
     const end = e.endTime ? e.endTime.slice(0, 16) : "";
     const o = (e.organizerClub || e.createdByName || "").trim().toLowerCase();
-    return `${t}__${v}__${s}__${end}__${o}`;
+    const statusPart = e.status === "CANCELLED" ? `__cancelled_${e.id}` : "";
+    return `${t}__${v}__${s}__${end}__${o}${statusPart}`;
   };
 
   const groupedEvents = React.useMemo(() => {
@@ -447,6 +482,14 @@ export default function SuperAdminEventsPage({ events = [], isLoading, error, on
                                   >
                                     <Copy size={13} style={{ color: "var(--blue)" }} /> Copy ID
                                   </button>
+                                  <button
+                                    type="button"
+                                    className="cc-action-dropdown-item"
+                                    style={{ color: "var(--coral)" }}
+                                    onClick={() => { setOpenMenuId(null); handleDeleteEvent(event.id, event.title); }}
+                                  >
+                                    <Trash2 size={13} style={{ color: "var(--coral)" }} /> Delete Event
+                                  </button>
                                 </div>
                               )}
                             </div>
@@ -644,6 +687,14 @@ export default function SuperAdminEventsPage({ events = [], isLoading, error, on
                               >
                                 <BarChart2 size={13} style={{ color: "var(--amber)" }} /> Analytics
                               </button>
+                              <button
+                                type="button"
+                                className="cc-action-dropdown-item"
+                                style={{ color: "var(--coral)" }}
+                                onClick={() => { setOpenMenuId(null); handleDeleteEvent(event.id, event.title); }}
+                              >
+                                <Trash2 size={13} style={{ color: "var(--coral)" }} /> Delete Event
+                              </button>
                             </div>
                           )}
                         </div>
@@ -777,15 +828,26 @@ export default function SuperAdminEventsPage({ events = [], isLoading, error, on
                       </div>
                     </div>
 
-                    <div>
-                      {!isPrimary && !isCancelled && (
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      {!isPrimary && (
                         <button
                           type="button"
                           className="relay-btn-danger relay-btn-sm"
                           disabled={resolvingLoading}
+                          onClick={() => handleDeleteDuplicate(it.id)}
+                          style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}
+                        >
+                          <Trash2 size={12} /> Delete Copy
+                        </button>
+                      )}
+                      {!isPrimary && !isCancelled && (
+                        <button
+                          type="button"
+                          className="relay-btn-ghost relay-btn-sm"
+                          disabled={resolvingLoading}
                           onClick={() => handleDeactivateDuplicate(it.id)}
                         >
-                          Deactivate Redundant Copy
+                          Deactivate
                         </button>
                       )}
                       {isCancelled && (

@@ -8,4 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface EventInviteRepository extends JpaRepository<EventInvite, Long> {
     
     boolean existsByEventAndParticipant(Event event, User participant);
+    
+    void deleteByEvent(Event event);
 }

@@ -216,6 +216,20 @@ export async function changePassword(data) {
   });
 }
 
+export async function requestPasswordReset(email) {
+  return authFetch("/api/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function resetPassword(token, newPassword, confirmPassword) {
+  return authFetch("/api/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ token, newPassword, confirmPassword }),
+  });
+}
+
 export async function logout() {
   sessionStorage.removeItem("relay_auth_token");
   localStorage.removeItem("relay_auth_token");

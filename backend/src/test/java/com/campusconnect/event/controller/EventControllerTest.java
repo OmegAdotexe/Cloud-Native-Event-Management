@@ -4,8 +4,14 @@ import com.campusconnect.auth.service.JwtService;
 import com.campusconnect.event.model.Event;
 import com.campusconnect.event.model.EventChangeLog;
 import com.campusconnect.event.model.EventStatus;
+import com.campusconnect.event.model.Registration;
+import com.campusconnect.event.model.RegistrationStatus;
+import com.campusconnect.event.model.TimelineItem;
+import com.campusconnect.event.model.TimelineItemType;
 import com.campusconnect.event.repository.EventChangeLogRepository;
 import com.campusconnect.event.repository.EventRepository;
+import com.campusconnect.event.repository.RegistrationRepository;
+import com.campusconnect.event.repository.TimelineItemRepository;
 import com.campusconnect.user.model.Role;
 import com.campusconnect.user.model.User;
 import com.campusconnect.user.repository.UserRepository;
@@ -35,6 +41,8 @@ class EventControllerTest {
     @Autowired UserRepository userRepository;
     @Autowired EventRepository eventRepository;
     @Autowired EventChangeLogRepository eventChangeLogRepository;
+    @Autowired RegistrationRepository registrationRepository;
+    @Autowired TimelineItemRepository timelineItemRepository;
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired JwtService jwtService;
     private User admin;
@@ -43,6 +51,8 @@ class EventControllerTest {
 
     @BeforeEach
     void setUp() {
+        registrationRepository.deleteAll();
+        timelineItemRepository.deleteAll();
         eventChangeLogRepository.deleteAll();
         eventRepository.deleteAll();
         userRepository.deleteAll();
@@ -223,6 +233,67 @@ class EventControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"newEventAdminId\":" + newAdmin.getId() + "}"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void eventAdminCanViewAllEventsInDatabase() throws Exception {
+        // Event created by 'admin'
+        createEvent();
+
+        // Event created by another admin
+        User otherAdmin = userRepository.save(user("another@test.com", Role.EVENT_ADMIN));
+        eventRepository.save(Event.builder()
+                .title("Other Admin Workshop")
+                .description("Sample")
+                .venueName("Lab B")
+                .startTime(LocalDateTime.of(2030, 7, 1, 10, 0))
+                .endTime(LocalDateTime.of(2030, 7, 1, 12, 0))
+                .registrationDeadline(LocalDateTime.of(2030, 6, 30, 10, 0))
+                .capacity(25)
+                .status(EventStatus.PUBLISHED)
+                .createdBy(otherAdmin)
+                .build());
+
+        // Admin should see BOTH events in the database
+        mockMvc.perform(get("/api/events").header("Authorization", bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2));
+    }
+
+    @Test
+    void participantCannotDeleteEvent() throws Exception {
+        Long id = createEvent();
+        mockMvc.perform(delete("/api/events/{id}", id).header("Authorization", bearer(participantToken)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deleteEventWithRegistrationsAndTimeline_succeedsCascade() throws Exception {
+        Long id = createEvent();
+        Event event = eventRepository.findById(id).orElseThrow();
+        User participant = userRepository.findByEmail("participant@test.com").orElseThrow();
+
+        // Attach registration and timeline item to event
+        registrationRepository.save(Registration.builder()
+                .event(event)
+                .participant(participant)
+                .status(RegistrationStatus.CONFIRMED)
+                .build());
+
+        timelineItemRepository.save(TimelineItem.builder()
+                .event(event)
+                .title("Keynote")
+                .type(TimelineItemType.EVENT_START)
+                .startTime(LocalDateTime.of(2030, 6, 1, 10, 0))
+                .createdByAdmin(admin)
+                .build());
+
+        // Deleting the event must cleanly cascade and succeed
+        mockMvc.perform(delete("/api/events/{id}", id).header("Authorization", bearer(adminToken)))
+                .andExpect(status().isNoContent());
+
+        assertEquals(true, eventRepository.findById(id).isEmpty());
+        assertEquals(0, registrationRepository.countByEvent(event));
     }
 
     private Long createEvent() throws Exception {

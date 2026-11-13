@@ -11,7 +11,10 @@ import com.campusconnect.event.model.EventChangeLog;
 import com.campusconnect.event.model.EventStatus;
 import com.campusconnect.event.model.RegistrationMode;
 import com.campusconnect.event.repository.EventChangeLogRepository;
+import com.campusconnect.event.repository.EventInviteRepository;
 import com.campusconnect.event.repository.EventRepository;
+import com.campusconnect.event.repository.RegistrationRepository;
+import com.campusconnect.event.repository.TimelineItemRepository;
 import com.campusconnect.user.model.Role;
 import com.campusconnect.user.model.User;
 import com.campusconnect.user.repository.UserRepository;
@@ -43,6 +46,8 @@ public class EventService {
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final RegistrationRepository registrationRepository;
+    private final TimelineItemRepository timelineItemRepository;
+    private final EventInviteRepository eventInviteRepository;
 
     @jakarta.persistence.PersistenceContext
     private jakarta.persistence.EntityManager entityManager;
@@ -103,16 +108,12 @@ public class EventService {
         if (category != null) {
             if (requester.getRole() == Role.PARTICIPANT) {
                 events = eventRepository.findByStatusAndCategoryOrderByStartTimeAsc(EventStatus.PUBLISHED, category);
-            } else if (requester.getRole() == Role.EVENT_ADMIN) {
-                events = eventRepository.findByCreatedByAndCategoryOrderByStartTimeAsc(requester, category);
             } else {
                 events = eventRepository.findByCategoryOrderByStartTimeAsc(category);
             }
         } else {
             if (requester.getRole() == Role.PARTICIPANT) {
                 events = eventRepository.findByStatusOrderByStartTimeAsc(EventStatus.PUBLISHED);
-            } else if (requester.getRole() == Role.EVENT_ADMIN) {
-                events = eventRepository.findByCreatedByOrderByStartTimeAsc(requester);
             } else {
                 events = eventRepository.findAllByOrderByStartTimeAsc();
             }
@@ -263,6 +264,9 @@ public class EventService {
     public void deleteEvent(Long id, User requester) {
         Event event = findEvent(id);
         ensureOwnerOrSuperAdmin(event, requester);
+        registrationRepository.deleteByEvent(event);
+        timelineItemRepository.deleteByEvent(event);
+        eventInviteRepository.deleteByEvent(event);
         eventChangeLogRepository.deleteByEvent(event);
         eventRepository.delete(event);
     }

@@ -228,7 +228,21 @@ export default function LoginPage() {
             />
           </div>
           <div style={{ marginBottom: "22px" }}>
-            <label className="relay-field-label">Password</label>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+              <label className="relay-field-label" style={{ marginBottom: 0 }}>Password</label>
+              <Link 
+                to="/forgot-password" 
+                style={{ 
+                  fontSize: "12px", 
+                  color: "var(--primary)", 
+                  textDecoration: "none", 
+                  fontWeight: 600,
+                  transition: "opacity 0.15s ease"
+                }}
+              >
+                Forgot Password?
+              </Link>
+            </div>
             <input
               type="password"
               className="relay-auth-input"

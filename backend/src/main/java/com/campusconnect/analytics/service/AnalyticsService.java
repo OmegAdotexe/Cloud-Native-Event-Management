@@ -28,17 +28,20 @@ public class AnalyticsService {
 
     @Transactional(readOnly = true)
     public AdminDashboardResponse getAdminDashboard(User user) {
+        long userEvents = eventRepository.countByCreatedBy(user);
+        boolean hasOwnEvents = userEvents > 0;
+
         return AdminDashboardResponse.builder()
-                .totalEvents(eventRepository.countByCreatedBy(user))
-                .draftEvents(eventRepository.countByCreatedByAndStatus(user, EventStatus.DRAFT))
-                .publishedEvents(eventRepository.countByCreatedByAndStatus(user, EventStatus.PUBLISHED))
-                .cancelledEvents(eventRepository.countByCreatedByAndStatus(user, EventStatus.CANCELLED))
-                .upcomingEvents(eventRepository.countUpcomingByCreatedBy(user))
+                .totalEvents(hasOwnEvents ? userEvents : eventRepository.count())
+                .draftEvents(hasOwnEvents ? eventRepository.countByCreatedByAndStatus(user, EventStatus.DRAFT) : eventRepository.countByStatus(EventStatus.DRAFT))
+                .publishedEvents(hasOwnEvents ? eventRepository.countByCreatedByAndStatus(user, EventStatus.PUBLISHED) : eventRepository.countByStatus(EventStatus.PUBLISHED))
+                .cancelledEvents(hasOwnEvents ? eventRepository.countByCreatedByAndStatus(user, EventStatus.CANCELLED) : eventRepository.countByStatus(EventStatus.CANCELLED))
+                .upcomingEvents(hasOwnEvents ? eventRepository.countUpcomingByCreatedBy(user) : eventRepository.countUpcomingEvents())
                 
-                .totalRegistrations(registrationRepository.countByEventCreatedBy(user))
-                .confirmedRegistrations(registrationRepository.countByEventCreatedByAndStatus(user, RegistrationStatus.CONFIRMED))
-                .pendingRegistrations(registrationRepository.countByEventCreatedByAndStatus(user, RegistrationStatus.PENDING))
-                .waitlistedRegistrations(registrationRepository.countByEventCreatedByAndStatus(user, RegistrationStatus.WAITLISTED))
+                .totalRegistrations(hasOwnEvents ? registrationRepository.countByEventCreatedBy(user) : registrationRepository.count())
+                .confirmedRegistrations(hasOwnEvents ? registrationRepository.countByEventCreatedByAndStatus(user, RegistrationStatus.CONFIRMED) : registrationRepository.countByStatus(RegistrationStatus.CONFIRMED))
+                .pendingRegistrations(hasOwnEvents ? registrationRepository.countByEventCreatedByAndStatus(user, RegistrationStatus.PENDING) : registrationRepository.countByStatus(RegistrationStatus.PENDING))
+                .waitlistedRegistrations(hasOwnEvents ? registrationRepository.countByEventCreatedByAndStatus(user, RegistrationStatus.WAITLISTED) : registrationRepository.countByStatus(RegistrationStatus.WAITLISTED))
                 .build();
     }
 

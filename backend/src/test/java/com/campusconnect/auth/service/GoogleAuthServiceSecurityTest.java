@@ -129,7 +129,9 @@ public class GoogleAuthServiceSecurityTest {
                 passwordEncoder,
                 jwtService,
                 null,
-                verifierService
+                verifierService,
+                null,
+                null
         );
     }
 

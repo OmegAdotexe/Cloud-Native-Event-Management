@@ -5,7 +5,7 @@ import * as relayApi from "../api/relayApi.js";
 import { 
   Calendar, CheckCircle2, Users, Clock, Edit, FileText, Search, Plus,
   BarChart2, Eye, MapPin, Globe, Sparkles, AlertCircle, ShieldCheck,
-  LayoutGrid, List, Filter, RotateCcw, MoreVertical, ChevronDown, ChevronRight, Copy, Layers, X, XCircle
+  LayoutGrid, List, Filter, RotateCcw, MoreVertical, ChevronDown, ChevronRight, Copy, Layers, X, XCircle, Trash2
 } from "lucide-react";
 import AdminRegistrations from "../components/AdminRegistrations.jsx";
 import AdminTimeline from "../components/AdminTimeline.jsx";
@@ -78,6 +78,45 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
       setResolvingMsg(err.message || "Failed to deactivate duplicate");
     } finally {
       setResolvingLoading(false);
+    }
+  };
+
+  const handleDeleteDuplicate = async (dupId) => {
+    if (window.confirm("Permanently delete this duplicate event record from the database? This cannot be undone.")) {
+      try {
+        setResolvingLoading(true);
+        await relayApi.deleteEvent(dupId);
+        setResolvingMsg("Duplicate record permanently deleted from database.");
+        if (onRefresh) await onRefresh();
+        setResolvingDuplicateGroup(prev => {
+          if (!prev) return null;
+          const updated = prev.items.filter(it => it.id !== dupId);
+          if (updated.length <= 1) {
+            return null; // All duplicates resolved!
+          }
+          return { ...prev, items: updated, count: updated.length, hasDuplicates: updated.length > 1 };
+        });
+      } catch (err) {
+        setResolvingMsg(err.message || "Failed to delete duplicate record");
+      } finally {
+        setResolvingLoading(false);
+      }
+    }
+  };
+
+  const handleDeleteEvent = async (eventId, eventTitle) => {
+    if (window.confirm(`Are you sure you want to delete "${eventTitle || 'this event'}"? This action cannot be undone.`)) {
+      setSaving(true);
+      setActionError("");
+      try {
+        await relayApi.deleteEvent(eventId);
+        reset();
+        if (onRefresh) await onRefresh();
+      } catch (err) {
+        setActionError(err.message || "Unable to delete event.");
+      } finally {
+        setSaving(false);
+      }
     }
   };
   
@@ -359,7 +398,8 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
     const s = e.startTime ? e.startTime.slice(0, 16) : "";
     const end = e.endTime ? e.endTime.slice(0, 16) : "";
     const o = (e.organizerClub || e.createdByName || "").trim().toLowerCase();
-    return `${t}__${v}__${s}__${end}__${o}`;
+    const statusPart = e.status === "CANCELLED" ? `__cancelled_${e.id}` : "";
+    return `${t}__${v}__${s}__${end}__${o}${statusPart}`;
   };
 
   const groupedEvents = React.useMemo(() => {
@@ -779,11 +819,7 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                       type="button"
                       className="relay-btn-danger"
                       disabled={saving}
-                      onClick={() => {
-                        if (window.confirm("Are you sure you want to delete this event? This action cannot be undone.")) {
-                          transition(relayApi.deleteEvent);
-                        }
-                      }}
+                      onClick={() => handleDeleteEvent(selected.id, selected.title)}
                     >
                       Delete
                     </button>
@@ -1092,6 +1128,14 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                                     >
                                       <BarChart2 size={13} style={{ color: "var(--amber)" }} /> Analytics
                                     </button>
+                                    <button
+                                      type="button"
+                                      className="cc-action-dropdown-item"
+                                      style={{ color: "var(--coral)" }}
+                                      onClick={() => { setOpenMenuId(null); handleDeleteEvent(event.id, event.title); }}
+                                    >
+                                      <Trash2 size={13} style={{ color: "var(--coral)" }} /> Delete Event
+                                    </button>
                                   </div>
                                 )}
                               </div>
@@ -1158,6 +1202,14 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                                           <XCircle size={13} style={{ color: "var(--coral)" }} /> Deactivate Duplicate
                                         </button>
                                       )}
+                                      <button
+                                        type="button"
+                                        className="cc-action-dropdown-item"
+                                        style={{ color: "var(--coral)" }}
+                                        onClick={() => { setOpenMenuId(null); handleDeleteDuplicate(dup.id); }}
+                                      >
+                                        <Trash2 size={13} style={{ color: "var(--coral)" }} /> Delete Duplicate
+                                      </button>
                                       <button
                                         type="button"
                                         className="cc-action-dropdown-item"
@@ -1317,6 +1369,14 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                                 >
                                   <BarChart2 size={13} style={{ color: "var(--amber)" }} /> Analytics
                                 </button>
+                                <button
+                                  type="button"
+                                  className="cc-action-dropdown-item"
+                                  style={{ color: "var(--coral)" }}
+                                  onClick={() => { setOpenMenuId(null); handleDeleteEvent(event.id, event.title); }}
+                                >
+                                  <Trash2 size={13} style={{ color: "var(--coral)" }} /> Delete Event
+                                </button>
                               </div>
                             )}
                           </div>
@@ -1419,15 +1479,26 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                         </div>
                       </div>
 
-                      <div>
-                        {!isPrimary && !isCancelled && (
+                      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                        {!isPrimary && (
                           <button
                             type="button"
                             className="relay-btn-danger relay-btn-sm"
                             disabled={resolvingLoading}
+                            onClick={() => handleDeleteDuplicate(it.id)}
+                            style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}
+                          >
+                            <Trash2 size={12} /> Delete Copy
+                          </button>
+                        )}
+                        {!isPrimary && !isCancelled && (
+                          <button
+                            type="button"
+                            className="relay-btn-ghost relay-btn-sm"
+                            disabled={resolvingLoading}
                             onClick={() => handleDeactivateDuplicate(it.id)}
                           >
-                            Deactivate Redundant Copy
+                            Deactivate
                           </button>
                         )}
                         {isCancelled && (

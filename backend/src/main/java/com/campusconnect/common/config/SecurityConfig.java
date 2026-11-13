@@ -50,6 +50,8 @@ public class SecurityConfig {
                     "/api/auth/login", 
                     "/api/auth/register",
                     "/api/auth/google",
+                    "/api/auth/forgot-password",
+                    "/api/auth/reset-password",
                     "/api/events/public",
                     "/api/events/categories/stats",
                     "/api/admin-applications/apply"

@@ -25,6 +25,8 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
 
     int countByEvent(Event event);
     
+    void deleteByEvent(Event event);
+    
     Optional<Registration> findFirstByEventAndStatusOrderByRegisteredAtAsc(Event event, RegistrationStatus status);
 
     Page<Registration> findByEvent(Event event, Pageable pageable);

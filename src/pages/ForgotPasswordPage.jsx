@@ -34,7 +34,12 @@ export default function ForgotPasswordPage() {
       const res = await relayApi.requestPasswordReset(trimmedEmail);
       setSubmittedEmail(trimmedEmail);
       if (res && res.devResetUrl) {
-        setDevResetUrl(res.devResetUrl);
+        try {
+          const parsed = new URL(res.devResetUrl);
+          setDevResetUrl(`${window.location.origin}${parsed.pathname}${parsed.search}`);
+        } catch (e) {
+          setDevResetUrl(res.devResetUrl);
+        }
       }
       setIsSuccess(true);
     } catch (err) {

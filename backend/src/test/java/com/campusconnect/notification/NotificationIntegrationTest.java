@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -30,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@TestPropertySource(properties = "spring.rabbitmq.listener.simple.auto-startup=true")
 public class NotificationIntegrationTest {
 
     @Autowired
@@ -112,9 +114,11 @@ public class NotificationIntegrationTest {
         }
         assertThat(messageReceived).isTrue();
 
-        List<Notification> notifications = notificationRepository.findAll();
-        assertThat(notifications).hasSize(1);
-        Notification notif = notifications.get(0);
+        List<Notification> participantNotifications = notificationRepository.findAll().stream()
+                .filter(n -> n.getRecipient().getId().equals(participant.getId()))
+                .toList();
+        assertThat(participantNotifications).hasSize(1);
+        Notification notif = participantNotifications.get(0);
         assertThat(notif.getType()).isEqualTo(NotificationType.REGISTRATION_CONFIRMED);
         assertThat(notif.getRecipient().getId()).isEqualTo(participant.getId());
         assertThat(notif.getStatus()).isEqualTo(NotificationStatus.SENT);

@@ -52,6 +52,29 @@ public class EventService {
     @jakarta.persistence.PersistenceContext
     private jakarta.persistence.EntityManager entityManager;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private javax.sql.DataSource dataSource;
+
+    private volatile Boolean isPostgresDb = null;
+
+    private boolean isPostgreSql() {
+        if (isPostgresDb == null) {
+            try {
+                if (dataSource != null) {
+                    try (java.sql.Connection conn = dataSource.getConnection()) {
+                        String name = conn.getMetaData().getDatabaseProductName();
+                        isPostgresDb = name != null && name.toLowerCase().contains("postgresql");
+                    }
+                } else {
+                    isPostgresDb = false;
+                }
+            } catch (Exception e) {
+                isPostgresDb = false;
+            }
+        }
+        return Boolean.TRUE.equals(isPostgresDb);
+    }
+
     @Transactional
     public EventResponse createEvent(CreateEventRequest request, User creator) {
         validateDates(request.getStartTime(), request.getEndTime());
@@ -59,15 +82,17 @@ public class EventService {
         validateVirtualLink(request.isVirtual(), request.getVirtualLink());
 
         // Concurrency Guard: Use PostgreSQL transaction-level advisory lock to serialize simultaneous duplicate attempts
-        String lockKey = creator.getId() + ":" + request.getTitle().trim().toLowerCase() + ":" 
-                + (request.getVenueName() != null ? request.getVenueName().trim().toLowerCase() : "") + ":" 
-                + (request.getStartTime() != null ? request.getStartTime().toString() : "");
-        try {
-            entityManager.createNativeQuery("SELECT pg_advisory_xact_lock(hashtext(?1))")
-                    .setParameter(1, lockKey)
-                    .getSingleResult();
-        } catch (Exception e) {
-            log.debug("Advisory lock bypassed (non-PostgreSQL or test environment): {}", e.getMessage());
+        if (isPostgreSql() && entityManager != null) {
+            String lockKey = creator.getId() + ":" + request.getTitle().trim().toLowerCase() + ":" 
+                    + (request.getVenueName() != null ? request.getVenueName().trim().toLowerCase() : "") + ":" 
+                    + (request.getStartTime() != null ? request.getStartTime().toString() : "");
+            try {
+                entityManager.createNativeQuery("SELECT pg_advisory_xact_lock(hashtext(?1))")
+                        .setParameter(1, lockKey)
+                        .getSingleResult();
+            } catch (Exception e) {
+                log.debug("Advisory lock bypassed: {}", e.getMessage());
+            }
         }
 
         // Accidental duplicate prevention

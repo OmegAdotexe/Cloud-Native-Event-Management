@@ -3,14 +3,16 @@ package com.campusconnect.event.service;
 import com.campusconnect.event.dto.CreateEventRequest;
 import com.campusconnect.event.model.Event;
 import com.campusconnect.event.model.EventStatus;
-import com.campusconnect.event.repository.EventRepository;
+import com.campusconnect.event.repository.*;
 import com.campusconnect.user.model.Role;
 import com.campusconnect.user.model.User;
+import com.campusconnect.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
 
@@ -23,6 +25,24 @@ class EventServiceTest {
 
     @Mock
     private EventRepository eventRepository;
+
+    @Mock
+    private RegistrationRepository registrationRepository;
+
+    @Mock
+    private EventChangeLogRepository eventChangeLogRepository;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private TimelineItemRepository timelineItemRepository;
+
+    @Mock
+    private EventInviteRepository eventInviteRepository;
 
     @InjectMocks
     private EventService eventService;

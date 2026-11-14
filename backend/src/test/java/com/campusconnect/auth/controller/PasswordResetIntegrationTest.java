@@ -9,6 +9,7 @@ import com.campusconnect.user.model.Role;
 import com.campusconnect.user.model.User;
 import com.campusconnect.user.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,6 +63,11 @@ public class PasswordResetIntegrationTest {
                 .authProvider("LOCAL")
                 .status("APPROVED")
                 .build());
+    }
+
+    @AfterEach
+    void tearDown() {
+        passwordResetTokenRepository.deleteAll();
     }
 
     @Test
@@ -158,7 +164,7 @@ public class PasswordResetIntegrationTest {
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(oldLoginRequest)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

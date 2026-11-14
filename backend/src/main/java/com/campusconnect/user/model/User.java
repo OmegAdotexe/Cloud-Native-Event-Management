@@ -54,6 +54,10 @@ public class User implements UserDetails {
     private String profileImageUrl;
 
     @Builder.Default
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<com.campusconnect.auth.model.PasswordResetToken> passwordResetTokens = new java.util.ArrayList<>();
+
+    @Builder.Default
     @Column(name = "is_platform_operator")
     private Boolean isPlatformOperator = false;
 

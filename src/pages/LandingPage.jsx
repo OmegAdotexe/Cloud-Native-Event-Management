@@ -418,12 +418,12 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Ishaan Prabhakar */}
+          {/* Ishan Prabhakar */}
           <div className="cc-dev-card">
             <div className="cc-dev-avatar" style={{ background: "linear-gradient(135deg, #0EA5E9, #38BDF8)" }}>
               IP
             </div>
-            <div className="cc-dev-name">Ishaan Prabhakar</div>
+            <div className="cc-dev-name">Ishan Prabhakar</div>
             <div className="cc-dev-role">Backend Systems & DevOps Engineer</div>
             <p className="cc-dev-bio">
               Engineered containerization workflows, robust database migrations, reverse proxy routing with Nginx, and real-time notification pipelines for approval workflows.

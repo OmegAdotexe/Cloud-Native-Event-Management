@@ -577,7 +577,7 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
 
             {(!selected || activeTab === "DETAILS") && (
               <form onSubmit={save}>
-                <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: "32px", alignItems: "start" }}>
+                <div className="cc-admin-form-grid">
                   
                   {/* Left Column: Form Fields */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -593,7 +593,7 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                       />
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                    <div className="cc-form-row-2col">
                       <div>
                         <label className="relay-field-label">Event Category <span style={{ color: "var(--primary)" }}>*</span></label>
                         <select className="relay-input" value={form.category} onChange={(e) => update('category', e.target.value)}>
@@ -631,7 +631,7 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                     </div>
 
                     {/* Venue & Virtual Toggle */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                    <div className="cc-form-row-2col">
                       <div>
                         <label className="relay-field-label">
                           Venue Location {!form.isVirtual && <span style={{ color: "var(--primary)" }}>*</span>}
@@ -662,7 +662,7 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                     </div>
 
                     {/* Dates & Times */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                    <div className="cc-form-row-2col">
                       <div>
                         <label className="relay-field-label">Start Date & Time <span style={{ color: "var(--primary)" }}>*</span></label>
                         <input 
@@ -687,7 +687,7 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                     </div>
 
                     {/* Capacity & Deadline */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                    <div className="cc-form-row-2col">
                       <div>
                         <label className="relay-field-label">Registration Deadline <span style={{ color: "var(--primary)" }}>*</span></label>
                         <input 
@@ -716,7 +716,7 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                     </div>
 
                     {/* Mode & Checkboxes */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", alignItems: "center" }}>
+                    <div className="cc-form-row-2col" style={{ alignItems: "center" }}>
                       <div>
                         <label className="relay-field-label">Registration Mode</label>
                         <select className="relay-input" value={form.registrationMode} onChange={(e) => update('registrationMode', e.target.value)}>
@@ -990,8 +990,8 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
 
             {/* List View Table */}
             {!isLoading && !error && filteredEvents.length > 0 && viewMode === "LIST" && (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+              <div className="relay-table-wrap">
+                <table className="relay-table">
                   <thead>
                     <tr style={{ borderBottom: "1px solid var(--border)", textAlign: "left", color: "var(--mute)" }}>
                       <th style={{ padding: "12px 10px", fontWeight: 600 }}>Event</th>

@@ -206,7 +206,7 @@ export default function AdminManagementPage() {
         <div className="relay-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px", flexWrap: "wrap", gap: "12px" }}>
             {/* Tabs */}
-            <div style={{ display: "flex", gap: "6px", background: "var(--bg)", padding: "4px", borderRadius: "10px", border: "1px solid var(--border)" }}>
+            <div className="cc-tab-switcher">
               <button
                 type="button"
                 className={`relay-btn-ghost ${activeTab === "PENDING" ? "active" : ""}`}

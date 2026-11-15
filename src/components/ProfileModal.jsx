@@ -129,7 +129,7 @@ export default function ProfileModal({ isOpen, onClose, initialTab = "DETAILS" }
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginTop: "8px" }}>
+            <div className="cc-form-row-2col" style={{ marginTop: "8px" }}>
               <div style={{ padding: "12px", background: "var(--surface)", borderRadius: "10px", border: "1px solid var(--border)" }}>
                 <div style={{ fontSize: "11.5px", color: "var(--mute)", display: "flex", alignItems: "center", gap: "6px" }}>
                   <Building size={13} /> Department / Club

@@ -245,7 +245,7 @@ export default function EventDetailPage() {
         </div>
 
         {/* ── Two Column Booking Layout ────────────────────────────── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.25fr 0.75fr", gap: "28px", alignItems: "start" }}>
+        <div className="cc-event-detail-grid">
           
           {/* Left Column: Event Narrative, Timeline, Gallery, Related */}
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
@@ -292,7 +292,7 @@ export default function EventDetailPage() {
                 <h3 style={{ fontSize: "17px", fontWeight: 700, color: "var(--text)", marginBottom: "16px" }}>
                   Event Gallery & Campus Photos
                 </h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "12px" }}>
                   {galleryImages.map((img, idx) => (
                     <div key={idx} style={{ height: "130px", borderRadius: "12px", overflow: "hidden", border: "1px solid var(--border)" }}>
                       <img src={img} alt={`Gallery ${idx}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />

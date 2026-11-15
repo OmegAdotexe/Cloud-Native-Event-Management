@@ -82,7 +82,7 @@ export default function TicketModal({ registration, onClose }) {
 
         {/* Content Body */}
         <div style={{ padding: "24px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+          <div className="cc-form-row-2col" style={{ marginBottom: "20px" }}>
             <div>
               <div style={{ fontSize: "11px", color: "var(--mute)", textTransform: "uppercase", fontWeight: 600 }}>Attendee</div>
               <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--text)", marginTop: "2px" }}>

@@ -144,7 +144,7 @@ export default function EventAnalyticsPage() {
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
+        <div className="cc-analytics-grid">
           
           {/* Status Breakdown Chart */}
           <div className="relay-card">

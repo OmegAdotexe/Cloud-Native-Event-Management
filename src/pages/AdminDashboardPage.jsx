@@ -192,7 +192,7 @@ export default function AdminDashboardPage({ events = [], isLoading, error, onRe
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
                     {(reg.selfRegistration || reg.participantId === user?.id) ? (
                       <>
                         <span style={{

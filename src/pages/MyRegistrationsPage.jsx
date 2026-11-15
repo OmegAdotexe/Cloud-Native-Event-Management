@@ -154,7 +154,7 @@ export default function MyRegistrationsPage() {
           {/* Controls: Search and Tabs */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "14px", marginBottom: "18px", flexWrap: "wrap" }}>
             {/* Tabs */}
-            <div style={{ display: "flex", gap: "6px", background: "var(--bg)", padding: "4px", borderRadius: "10px", border: "1px solid var(--border)", flexWrap: "wrap" }}>
+            <div className="cc-tab-switcher">
               {[
                 { key: 'CONFIRMED', label: 'Upcoming Confirmed', count: tabCounts.CONFIRMED },
                 { key: 'PENDING', label: 'Pending Approval', count: tabCounts.PENDING },
@@ -267,7 +267,7 @@ export default function MyRegistrationsPage() {
                   }}
                   onClick={() => navigate(`/event/${reg.eventId}`)}
                 >
-                  <div style={{ display: "flex", gap: "18px", alignItems: "flex-start" }}>
+                  <div className="cc-registration-card-inner">
                     <img
                       src={coverUrl}
                       alt={reg.eventTitle}

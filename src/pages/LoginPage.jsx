@@ -71,7 +71,7 @@ export default function LoginPage() {
 
   return (
     <div className="relay-auth-page">
-      <div className="relay-auth-card" style={{ maxWidth: "460px" }}>
+      <div className="relay-auth-card">
         {/* Brand Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>

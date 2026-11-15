@@ -300,7 +300,7 @@ export default function RegisterPage() {
 
               {accountType === "EVENT_ADMIN" && (
                 <>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "14px" }}>
+                  <div className="cc-form-row-2col" style={{ marginBottom: "14px" }}>
                     <div>
                       <label className="relay-field-label">Phone Number</label>
                       <input

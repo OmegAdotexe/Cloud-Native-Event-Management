@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext.jsx";
 import { useNavigate, useLocation } from "react-router-dom";
 import * as relayApi from "../api/relayApi.js";
@@ -122,8 +122,11 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
   
   const selected = events.find((event) => event.id === selectedId);
 
+  const processedNavigationRef = useRef(null);
+
   useEffect(() => {
-    if (location.state?.create) {
+    if (location.state?.create && processedNavigationRef.current !== "create") {
+      processedNavigationRef.current = "create";
       setSelectedId(null);
       setIsCreating(true);
       setForm(initialForm);
@@ -131,29 +134,34 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
       setCustomGallery([]);
       setActionError("");
       setActiveTab("DETAILS");
-      window.history.replaceState({}, document.title);
+      // Clean up React Router location state so subsequent background events polling does not re-trigger this
+      navigate(location.pathname, { replace: true, state: {} });
     } else if (location.state?.editEventId && events.length > 0) {
-      const ev = events.find(e => e.id === location.state.editEventId);
-      if (ev) {
-        setSelectedId(ev.id);
-        setIsCreating(false);
-        const images = getCustomEventImages(ev.id);
-        setCustomPoster(images?.poster || null);
-        setCustomGallery(images?.gallery || []);
-        setForm({
-          ...ev,
-          startTime: toInputTime(ev.startTime),
-          endTime: toInputTime(ev.endTime),
-          registrationDeadline: toInputTime(ev.registrationDeadline),
-          organizerClub: ev.organizerClub || "",
-        });
-        if (location.state.tab) {
-          setActiveTab(location.state.tab);
+      const editKey = `edit-${location.state.editEventId}`;
+      if (processedNavigationRef.current !== editKey) {
+        const ev = events.find(e => e.id === location.state.editEventId);
+        if (ev) {
+          processedNavigationRef.current = editKey;
+          setSelectedId(ev.id);
+          setIsCreating(false);
+          const images = getCustomEventImages(ev.id);
+          setCustomPoster(images?.poster || null);
+          setCustomGallery(images?.gallery || []);
+          setForm({
+            ...ev,
+            startTime: toInputTime(ev.startTime),
+            endTime: toInputTime(ev.endTime),
+            registrationDeadline: toInputTime(ev.registrationDeadline),
+            organizerClub: ev.organizerClub || "",
+          });
+          if (location.state.tab) {
+            setActiveTab(location.state.tab);
+          }
+          navigate(location.pathname, { replace: true, state: {} });
         }
-        window.history.replaceState({}, document.title);
       }
     }
-  }, [location.state, events]);
+  }, [location.state, events, navigate, location.pathname]);
 
   useEffect(() => {
     relayApi.getAdminDashboard()
@@ -199,6 +207,7 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
   const openCreate = () => {
+    processedNavigationRef.current = "create";
     setSelectedId(null);
     setIsCreating(true);
     setForm(initialForm);
@@ -455,7 +464,7 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
               ← Back to Directory
             </button>
           )}
-          <button className="cc-btn-primary" onClick={openCreate} style={{ padding: "10px 18px", fontSize: "13.5px" }}>
+          <button type="button" className="cc-btn-primary" onClick={openCreate} style={{ padding: "10px 18px", fontSize: "13.5px" }}>
             <Plus size={16} /> Create Event
           </button>
         </div>
@@ -558,7 +567,7 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                   </p>
                 </div>
               </div>
-              <button className="relay-btn-ghost relay-btn-sm" onClick={reset}>Close Form</button>
+              <button type="button" className="relay-btn-ghost relay-btn-sm" onClick={reset}>Close Form</button>
             </div>
             
             {actionError && <div className="relay-auth-error" style={{ marginBottom: 16 }}>{actionError}</div>}
@@ -593,7 +602,15 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
             )}
 
             {(!selected || activeTab === "DETAILS") && (
-              <form onSubmit={save}>
+              <form 
+                onSubmit={save}
+                onKeyDown={(e) => {
+                  // Prevent accidental submission when typing and pressing Enter in input fields
+                  if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") {
+                    e.preventDefault();
+                  }
+                }}
+              >
                 <div className="cc-admin-form-grid">
                   
                   {/* Left Column: Form Fields */}

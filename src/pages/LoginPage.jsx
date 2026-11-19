@@ -8,14 +8,20 @@ export default function LoginPage() {
   const [selectedRole, setSelectedRole] = useState("PARTICIPANT"); // UI portal selector
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { login, loginWithGoogle, error } = useAuth();
+  const { login, loginWithGoogle, error, clearError } = useAuth();
   const [loading, setLoading] = useState(false);
   const [localError, setLocalError] = useState("");
   const navigate = useNavigate();
 
+  React.useEffect(() => {
+    setLocalError("");
+    clearError?.();
+  }, [clearError]);
+
   const handleLocalSubmit = async (e) => {
     e.preventDefault();
     setLocalError("");
+    clearError?.();
     setLoading(true);
     
     try {
@@ -30,6 +36,7 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = async () => {
     setLocalError("");
+    clearError?.();
     setLoading(true);
     try {
       const firebaseResult = await signInWithGoogle();
@@ -111,6 +118,8 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => {
                   setSelectedRole(tab.id);
+                  setLocalError("");
+                  clearError?.();
                   if (tab.id === "PARTICIPANT") { setEmail("participant@example.com"); setPassword("password"); }
                   else if (tab.id === "EVENT_ADMIN") { setEmail("admin@example.com"); setPassword("password"); }
                   else { setEmail("superadmin@example.com"); setPassword("password"); }
@@ -272,7 +281,7 @@ export default function LoginPage() {
         </div>
 
         <p style={{ marginTop: "18px", fontSize: "13px", textAlign: "center", color: "var(--mute)" }}>
-          New student? <Link to="/register" style={{ color: "var(--primary)", textDecoration: "none", fontWeight: 600 }}>Create an account</Link>
+          New student? <Link to="/register" onClick={() => clearError?.()} style={{ color: "var(--primary)", textDecoration: "none", fontWeight: 600 }}>Create an account</Link>
         </p>
       </div>
     </div>

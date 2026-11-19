@@ -89,7 +89,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleBadCredentialsException(org.springframework.security.authentication.BadCredentialsException ex) {
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", LocalDateTime.now());
-        body.put("message", "Invalid email or password");
+        String msg = ex.getMessage();
+        if (msg == null || msg.isBlank() || "Bad credentials".equalsIgnoreCase(msg.trim())) {
+            msg = "Invalid email or password";
+        }
+        body.put("message", msg);
         body.put("status", HttpStatus.UNAUTHORIZED.value());
         return new ResponseEntity<>(body, HttpStatus.UNAUTHORIZED);
     }

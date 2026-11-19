@@ -19,6 +19,9 @@ dist/
 .env.*
 !.env.example
 .env.local
+*firebase*admin*.json
+*adminsdk*.json
+firebase-admin.json
 
 # =========================
 # IDE files

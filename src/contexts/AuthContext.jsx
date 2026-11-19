@@ -115,8 +115,12 @@ export function AuthProvider({ children }) {
     setIsLoading(false);
   };
 
+  const clearError = React.useCallback(() => {
+    setError(null);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, token, role: user?.role, isLoading, error, login, register, loginWithGoogle, logout, setError }}>
+    <AuthContext.Provider value={{ user, token, role: user?.role, isLoading, error, login, register, loginWithGoogle, logout, setError, clearError }}>
       {children}
     </AuthContext.Provider>
   );

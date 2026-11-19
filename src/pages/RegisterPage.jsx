@@ -19,15 +19,21 @@ export default function RegisterPage() {
   const [orgRole, setOrgRole] = useState("");
   const [statement, setStatement] = useState("");
 
-  const { register, login, loginWithGoogle, error } = useAuth();
+  const { register, login, loginWithGoogle, error, clearError } = useAuth();
   const [loading, setLoading] = useState(false);
   const [localError, setLocalError] = useState("");
   const [applicationSubmitted, setApplicationSubmitted] = useState(false);
   const navigate = useNavigate();
 
+  React.useEffect(() => {
+    setLocalError("");
+    clearError?.();
+  }, [clearError]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLocalError("");
+    clearError?.();
     setLoading(true);
 
     if (password.length < 6) {
@@ -55,7 +61,7 @@ export default function RegisterPage() {
 
       // 2. If Event Admin application, immediately authenticate and submit application
       if (accountType === "EVENT_ADMIN") {
-        await login(email, password);
+        await login({ email, password });
         await relayApi.applyForAdmin({
           fullName: name.trim(),
           department: department.trim(),
@@ -76,6 +82,7 @@ export default function RegisterPage() {
 
   const handleGoogleSignUp = async () => {
     setLocalError("");
+    clearError?.();
     setLoading(true);
     try {
       const firebaseResult = await signInWithGoogle();
@@ -122,7 +129,7 @@ export default function RegisterPage() {
           <button
             type="button"
             className={`relay-btn-ghost ${accountType === "PARTICIPANT" ? "active" : ""}`}
-            onClick={() => setAccountType("PARTICIPANT")}
+            onClick={() => { setAccountType("PARTICIPANT"); setLocalError(""); clearError?.(); }}
             style={{
               flex: 1, padding: "8px", fontSize: "12.5px", fontWeight: 600,
               background: accountType === "PARTICIPANT" ? "var(--surface)" : "transparent",
@@ -135,7 +142,7 @@ export default function RegisterPage() {
           <button
             type="button"
             className={`relay-btn-ghost ${accountType === "EVENT_ADMIN" ? "active" : ""}`}
-            onClick={() => setAccountType("EVENT_ADMIN")}
+            onClick={() => { setAccountType("EVENT_ADMIN"); setLocalError(""); clearError?.(); }}
             style={{
               flex: 1, padding: "8px", fontSize: "12.5px", fontWeight: 600,
               background: accountType === "EVENT_ADMIN" ? "var(--surface)" : "transparent",
@@ -341,7 +348,7 @@ export default function RegisterPage() {
             </form>
 
             <p style={{ marginTop: "18px", fontSize: "13px", textAlign: "center", color: "var(--mute)" }}>
-              Already have an account? <Link to="/login" style={{ color: "var(--primary)", textDecoration: "none", fontWeight: 600 }}>Log in</Link>
+              Already have an account? <Link to="/login" onClick={() => clearError?.()} style={{ color: "var(--primary)", textDecoration: "none", fontWeight: 600 }}>Log in</Link>
             </p>
           </>
         )}

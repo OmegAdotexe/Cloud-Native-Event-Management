@@ -124,10 +124,15 @@ public class GoogleTokenVerifierService {
             } catch (BadCredentialsException bce) {
                 throw bce;
             } catch (com.google.firebase.auth.FirebaseAuthException fae) {
-                log.debug("Token is not a valid Firebase ID token ({}), attempting Google OAuth verification fallback", fae.getMessage());
+                log.warn("Firebase ID token verification failed: {} (AuthErrorCode: {})", fae.getMessage(), fae.getAuthErrorCode());
+                throw new BadCredentialsException("Firebase authentication failed: " + fae.getMessage(), fae);
             } catch (Exception ex) {
-                log.debug("Firebase ID token verification encountered exception: {}", ex.getMessage());
+                log.error("Firebase ID token verification encountered exception: {}", ex.getMessage(), ex);
+                throw new BadCredentialsException("Firebase authentication token verification error: " + ex.getMessage(), ex);
             }
+        } else {
+            log.error("CRITICAL: FirebaseApp is not initialized on backend. Ensure Firebase Admin credentials (firebase-admin.json or FIREBASE_CREDENTIALS_PATH) are configured.");
+            throw new BadCredentialsException("Authentication server configuration error: Firebase Admin SDK is not initialized.");
         }
 
         // 3. Fallback: Genuine Google ID Token Cryptographic Verification via Google's Public JWK Certs

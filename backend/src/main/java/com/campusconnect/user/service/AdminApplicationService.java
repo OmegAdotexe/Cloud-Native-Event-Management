@@ -119,12 +119,14 @@ public class AdminApplicationService {
         return toResponse(saved);
     }
 
+    @Transactional(readOnly = true)
     public AdminApplicationResponse getMyApplicationStatus(User applicant) {
         return applicationRepository.findFirstByUserIdOrderByCreatedAtDesc(applicant.getId())
                 .map(this::toResponse)
                 .orElse(null);
     }
 
+    @Transactional(readOnly = true)
     public Page<AdminApplicationResponse> getApplications(AdminApplicationStatus status, String search, Pageable pageable, User requester) {
         ensureSuperAdmin(requester);
         boolean hasSearch = search != null && !search.trim().isEmpty();
@@ -143,6 +145,7 @@ public class AdminApplicationService {
         return page.map(this::toResponse);
     }
 
+    @Transactional(readOnly = true)
     public AdminApplicationResponse getApplicationById(Long id, User requester) {
         ensureSuperAdmin(requester);
         AdminApplication app = applicationRepository.findById(id)
@@ -150,6 +153,7 @@ public class AdminApplicationService {
         return toResponse(app);
     }
 
+    @Transactional(readOnly = true)
     public List<AdminApplicationAudit> getApplicationAudits(Long id, User requester) {
         ensureSuperAdmin(requester);
         return auditRepository.findByApplicationIdOrderByCreatedAtDesc(id);
@@ -328,6 +332,7 @@ public class AdminApplicationService {
         return toResponse(saved);
     }
 
+    @Transactional(readOnly = true)
     public AdminApplicationStatsResponse getStats(User requester) {
         ensureSuperAdmin(requester);
         return AdminApplicationStatsResponse.builder()
@@ -354,9 +359,23 @@ public class AdminApplicationService {
             }
         } catch (Exception ignored) {}
 
+        String reviewerName = null;
+        try {
+            if (a.getReviewedBy() != null) {
+                reviewerName = a.getReviewedBy().getName();
+            }
+        } catch (Exception ignored) {}
+
+        Long userId = null;
+        try {
+            if (a.getUser() != null) {
+                userId = a.getUser().getId();
+            }
+        } catch (Exception ignored) {}
+
         return AdminApplicationResponse.builder()
                 .id(a.getId())
-                .userId(a.getUser() != null ? a.getUser().getId() : null)
+                .userId(userId)
                 .fullName(a.getFullName())
                 .email(a.getEmail())
                 .department(a.getDepartment())
@@ -365,7 +384,7 @@ public class AdminApplicationService {
                 .statement(a.getStatement())
                 .status(a.getStatus())
                 .rejectionReason(a.getRejectionReason())
-                .reviewedByName(a.getReviewedBy() != null ? a.getReviewedBy().getName() : null)
+                .reviewedByName(reviewerName)
                 .reviewedAt(a.getReviewedAt())
                 .createdAt(a.getCreatedAt())
                 .updatedAt(a.getUpdatedAt())

@@ -237,8 +237,8 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
     setActiveTab("DETAILS"); 
   };
   
-  const save = async (e) => {
-    e.preventDefault(); 
+  const save = async (e, explicitStatus = null) => {
+    if (e && e.preventDefault) e.preventDefault(); 
     setActionError("");
 
     if (!form.title?.trim()) {
@@ -285,6 +285,8 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
       return;
     }
 
+    const targetStatus = explicitStatus || form.status || "DRAFT";
+
     setSaving(true);
     try { 
       const payload = {
@@ -297,7 +299,7 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
         endTime: form.endTime.length === 16 ? form.endTime + ":00" : form.endTime,
         registrationDeadline: form.registrationDeadline.length === 16 ? form.registrationDeadline + ":00" : form.registrationDeadline,
         capacity: Number(form.capacity),
-        status: form.status || "DRAFT",
+        status: targetStatus,
         registrationMode: form.registrationMode || "OPEN",
         category: form.category || "OTHER",
         waitlistEnabled: Boolean(form.waitlistEnabled),
@@ -337,7 +339,10 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
     setSaving(true);
     setActionError(""); 
     try { 
-      data !== null ? await action(selected.id, data) : await action(selected.id); 
+      const res = data !== null ? await action(selected.id, data) : await action(selected.id); 
+      if (res && res.status) {
+        setForm(f => ({ ...f, status: res.status }));
+      }
       await onRefresh(); 
     } catch (err) {
       setActionError(err.message || "Unable to update event.");
@@ -439,9 +444,21 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
           </h1>
           <p>Create and publish campus events, configure venues, manage registrations, and review attendees.</p>
         </div>
-        <button className="cc-btn-primary" onClick={openCreate} style={{ padding: "10px 18px", fontSize: "13.5px" }}>
-          <Plus size={16} /> Create Event
-        </button>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          {isSuperAdmin && (
+            <button
+              type="button"
+              className="relay-btn-ghost"
+              onClick={() => navigate("/events")}
+              style={{ padding: "10px 16px", fontSize: "13.5px" }}
+            >
+              ← Back to Directory
+            </button>
+          )}
+          <button className="cc-btn-primary" onClick={openCreate} style={{ padding: "10px 18px", fontSize: "13.5px" }}>
+            <Plus size={16} /> Create Event
+          </button>
+        </div>
       </div>
 
       <div className="relay-body">
@@ -606,15 +623,23 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                       </div>
 
                       <div>
-                        <label className="relay-field-label">Organizing Club or Society</label>
-                        <input
-                          className="relay-input"
-                          type="text"
-                          placeholder="e.g. Computer Science Society"
-                          value={form.organizerClub || ""}
-                          onChange={(e) => update('organizerClub', e.target.value)}
-                        />
+                        <label className="relay-field-label">Publication Status</label>
+                        <select className="relay-input" value={form.status || "DRAFT"} onChange={(e) => update('status', e.target.value)}>
+                          <option value="DRAFT">Draft (Hidden from public directory)</option>
+                          <option value="PUBLISHED">Published (Live in campus directory)</option>
+                        </select>
                       </div>
+                    </div>
+
+                    <div>
+                      <label className="relay-field-label">Organizing Club or Society</label>
+                      <input
+                        className="relay-input"
+                        type="text"
+                        placeholder="e.g. Computer Science Society"
+                        value={form.organizerClub || ""}
+                        onChange={(e) => update('organizerClub', e.target.value)}
+                      />
                     </div>
 
                     {/* Image Upload Area */}
@@ -783,46 +808,68 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                 </div>
 
                 {/* Form Buttons */}
-                <div style={{ display: "flex", gap: 10, marginTop: 28, paddingTop: 18, borderTop: "1px solid var(--border)", alignItems: "center" }}>
-                  <button type="submit" className="cc-btn-primary" disabled={saving}>
-                    {saving ? "Saving..." : selected ? "Save Changes" : "Create & Save Event"}
-                  </button>
+                <div style={{ display: "flex", gap: 10, marginTop: 28, paddingTop: 18, borderTop: "1px solid var(--border)", alignItems: "center", flexWrap: "wrap" }}>
+                  {!selected ? (
+                    <>
+                      <button
+                        type="button"
+                        className="cc-btn-primary"
+                        disabled={saving}
+                        onClick={(e) => save(e, form.status || "PUBLISHED")}
+                      >
+                        {saving ? "Publishing..." : form.status === "DRAFT" ? "Create Event (Draft)" : "Create & Publish Event"}
+                      </button>
+                      <button
+                        type="button"
+                        className="relay-btn-ghost"
+                        disabled={saving}
+                        onClick={(e) => save(e, "DRAFT")}
+                      >
+                        {saving ? "Saving..." : "Save as Draft"}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="submit" className="cc-btn-primary" disabled={saving}>
+                        {saving ? "Saving..." : "Save Changes"}
+                      </button>
 
-                  {selected && (
-                    <button
-                      type="button"
-                      className="relay-btn"
-                      disabled={saving || selected.status === "PUBLISHED"}
-                      onClick={() => transition(relayApi.publishEvent)}
-                      style={{ background: "var(--teal)" }}
-                    >
-                      Publish Event
-                    </button>
-                  )}
+                      {(form.status !== "PUBLISHED" && selected.status !== "PUBLISHED") && (
+                        <button
+                          type="button"
+                          className="relay-btn"
+                          disabled={saving}
+                          onClick={async () => {
+                            update('status', 'PUBLISHED');
+                            await transition(relayApi.publishEvent);
+                          }}
+                          style={{ background: "var(--teal)", color: "#fff" }}
+                        >
+                          Publish Event
+                        </button>
+                      )}
 
-                  {selected && (
-                    <button
-                      type="button"
-                      className="relay-btn-danger"
-                      disabled={saving || selected.status === "CANCELLED"}
-                      onClick={() => {
-                        const reason = window.prompt("Reason for cancellation?");
-                        if (reason) transition(relayApi.cancelEvent, reason);
-                      }}
-                    >
-                      Cancel Event
-                    </button>
-                  )}
+                      <button
+                        type="button"
+                        className="relay-btn-danger"
+                        disabled={saving || form.status === "CANCELLED" || selected.status === "CANCELLED"}
+                        onClick={() => {
+                          const reason = window.prompt("Reason for cancellation?");
+                          if (reason) transition(relayApi.cancelEvent, reason);
+                        }}
+                      >
+                        Cancel Event
+                      </button>
 
-                  {selected && (
-                    <button
-                      type="button"
-                      className="relay-btn-danger"
-                      disabled={saving}
-                      onClick={() => handleDeleteEvent(selected.id, selected.title)}
-                    >
-                      Delete
-                    </button>
+                      <button
+                        type="button"
+                        className="relay-btn-danger"
+                        disabled={saving}
+                        onClick={() => handleDeleteEvent(selected.id, selected.title)}
+                      >
+                        Delete
+                      </button>
+                    </>
                   )}
 
                   <button type="button" className="relay-btn-ghost" onClick={reset}>
@@ -1078,13 +1125,34 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                               </span>
                             </td>
                             <td style={{ padding: "10px 10px" }}>
-                              <span style={{ 
-                                padding: "2px 8px", borderRadius: "10px", fontSize: "11px", fontWeight: 600,
-                                background: event.status === "PUBLISHED" ? "var(--teal-light)" : event.status === "CANCELLED" ? "var(--coral-light)" : "var(--primary-light)",
-                                color: event.status === "PUBLISHED" ? "var(--teal)" : event.status === "CANCELLED" ? "var(--coral)" : "var(--primary)"
-                              }}>
-                                {event.status}
-                              </span>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <span style={{ 
+                                  padding: "2px 8px", borderRadius: "10px", fontSize: "11px", fontWeight: 600,
+                                  background: event.status === "PUBLISHED" ? "var(--teal-light)" : event.status === "CANCELLED" ? "var(--coral-light)" : "var(--primary-light)",
+                                  color: event.status === "PUBLISHED" ? "var(--teal)" : event.status === "CANCELLED" ? "var(--coral)" : "var(--primary)"
+                                }}>
+                                  {event.status}
+                                </span>
+                                {event.status === "DRAFT" && (
+                                  <button
+                                    type="button"
+                                    className="relay-btn-sm"
+                                    style={{ background: "var(--teal)", color: "#fff", fontSize: "10.5px", padding: "1px 6px", borderRadius: "4px", border: "none", cursor: "pointer" }}
+                                    title="Quick Publish Event"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      try {
+                                        await relayApi.publishEvent(event.id);
+                                        if (onRefresh) await onRefresh();
+                                      } catch (err) {
+                                        alert(err.message || "Failed to publish event.");
+                                      }
+                                    }}
+                                  >
+                                    Publish
+                                  </button>
+                                )}
+                              </div>
                             </td>
                             <td style={{ padding: "10px 10px", color: "var(--text-secondary)", fontSize: "12px" }}>
                               <div>{new Date(event.startTime).toLocaleDateString()}</div>
@@ -1114,6 +1182,24 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                                     >
                                       <Eye size={13} style={{ color: "var(--teal)" }} /> View Public Page
                                     </button>
+                                    {event.status === "DRAFT" && (
+                                      <button
+                                        type="button"
+                                        className="cc-action-dropdown-item"
+                                        style={{ color: "var(--teal)" }}
+                                        onClick={async () => {
+                                          setOpenMenuId(null);
+                                          try {
+                                            await relayApi.publishEvent(event.id);
+                                            if (onRefresh) await onRefresh();
+                                          } catch (err) {
+                                            alert(err.message || "Failed to publish event.");
+                                          }
+                                        }}
+                                      >
+                                        <CheckCircle2 size={13} style={{ color: "var(--teal)" }} /> Publish Event
+                                      </button>
+                                    )}
                                     <button
                                       type="button"
                                       className="cc-action-dropdown-item"
@@ -1275,6 +1361,33 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                           }}>
                             {event.status}
                           </span>
+                          {event.status === "DRAFT" && (
+                            <button
+                              type="button"
+                              style={{
+                                padding: "2px 8px",
+                                borderRadius: "10px",
+                                fontSize: "10.5px",
+                                fontWeight: 700,
+                                background: "var(--teal)",
+                                color: "#fff",
+                                border: "none",
+                                cursor: "pointer"
+                              }}
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  await relayApi.publishEvent(event.id);
+                                  if (onRefresh) await onRefresh();
+                                } catch (err) {
+                                  alert(err.message || "Failed to publish event.");
+                                }
+                              }}
+                              title="Publish this draft event"
+                            >
+                              Publish
+                            </button>
+                          )}
                         </div>
                         <div style={{ position: "absolute", bottom: "10px", left: "10px" }}>
                           <span style={{ 
@@ -1355,6 +1468,24 @@ export default function AdminPage({ events = [], isLoading, error, onRefresh }) 
                                 >
                                   <Eye size={13} style={{ color: "var(--teal)" }} /> View Public Page
                                 </button>
+                                    {event.status === "DRAFT" && (
+                                      <button
+                                        type="button"
+                                        className="cc-action-dropdown-item"
+                                        style={{ color: "var(--teal)" }}
+                                        onClick={async () => {
+                                          setOpenMenuId(null);
+                                          try {
+                                            await relayApi.publishEvent(event.id);
+                                            if (onRefresh) await onRefresh();
+                                          } catch (err) {
+                                            alert(err.message || "Failed to publish event.");
+                                          }
+                                        }}
+                                      >
+                                        <CheckCircle2 size={13} style={{ color: "var(--teal)" }} /> Publish Event
+                                      </button>
+                                    )}
                                 <button
                                   type="button"
                                   className="cc-action-dropdown-item"

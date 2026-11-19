@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { 
   Calendar, CheckCircle2, Users, Clock, Search, 
   Plus, BarChart2, Eye, Edit,
@@ -11,6 +11,13 @@ import * as relayApi from "../api/relayApi.js";
 
 export default function SuperAdminEventsPage({ events = [], isLoading, error, onRefresh }) {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.editEventId || location.state?.create) {
+      navigate("/admin/events/manage", { state: location.state, replace: true });
+    }
+  }, [location.state, navigate]);
   
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -172,7 +179,7 @@ export default function SuperAdminEventsPage({ events = [], isLoading, error, on
         </div>
         <button 
           className="cc-btn-primary" 
-          onClick={() => navigate("/events", { state: { create: true } })} 
+          onClick={() => navigate("/admin/events/manage", { state: { create: true } })} 
           style={{ padding: "10px 18px", fontSize: "13.5px" }}
         >
           <Plus size={16} /> Create Event
@@ -430,13 +437,45 @@ export default function SuperAdminEventsPage({ events = [], isLoading, error, on
                           </td>
 
                           <td>
-                            <span className={`relay-pill ${
-                              event.status === "PUBLISHED" ? "green" :
-                              event.status === "DRAFT" ? "amber" :
-                              event.status === "COMPLETED" ? "blue" : "coral"
-                            }`} style={{ fontSize: "11px", padding: "3px 8px" }}>
-                              {event.status}
-                            </span>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              <span className={`relay-pill ${
+                                event.status === "PUBLISHED" ? "green" :
+                                event.status === "DRAFT" ? "amber" :
+                                event.status === "COMPLETED" ? "blue" : "coral"
+                              }`} style={{ fontSize: "11px", padding: "3px 8px" }}>
+                                {event.status}
+                              </span>
+                              {event.status === "DRAFT" && (
+                                <button
+                                  type="button"
+                                  className="relay-btn"
+                                  style={{
+                                    fontSize: "10.5px",
+                                    padding: "2px 7px",
+                                    borderRadius: "6px",
+                                    background: "var(--teal)",
+                                    color: "#fff",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "3px"
+                                  }}
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    try {
+                                      await relayApi.publishEvent(event.id);
+                                      if (onRefresh) await onRefresh();
+                                    } catch (err) {
+                                      alert(err.message || "Failed to publish event.");
+                                    }
+                                  }}
+                                  title="Publish this event"
+                                >
+                                  Publish
+                                </button>
+                              )}
+                            </div>
                           </td>
 
                           <td style={{ textAlign: "right" }}>
@@ -458,10 +497,28 @@ export default function SuperAdminEventsPage({ events = [], isLoading, error, on
                                   >
                                     <Eye size={13} style={{ color: "var(--teal)" }} /> View Public Page
                                   </button>
+                                  {event.status === "DRAFT" && (
+                                    <button
+                                      type="button"
+                                      className="cc-action-dropdown-item"
+                                      style={{ color: "var(--teal)" }}
+                                      onClick={async () => {
+                                        setOpenMenuId(null);
+                                        try {
+                                          await relayApi.publishEvent(event.id);
+                                          if (onRefresh) await onRefresh();
+                                        } catch (err) {
+                                          alert(err.message || "Failed to publish event.");
+                                        }
+                                      }}
+                                    >
+                                      <CheckCircle2 size={13} style={{ color: "var(--teal)" }} /> Publish Event
+                                    </button>
+                                  )}
                                   <button
                                     type="button"
                                     className="cc-action-dropdown-item"
-                                    onClick={() => { setOpenMenuId(null); navigate("/events", { state: { editEventId: event.id } }); }}
+                                    onClick={() => { setOpenMenuId(null); navigate("/admin/events/manage", { state: { editEventId: event.id } }); }}
                                   >
                                     <Edit size={13} style={{ color: "var(--primary)" }} /> Edit Settings
                                   </button>
@@ -552,7 +609,7 @@ export default function SuperAdminEventsPage({ events = [], isLoading, error, on
                                     type="button"
                                     className="relay-btn-ghost relay-btn-sm"
                                     style={{ fontSize: "11px", padding: "2px 8px" }}
-                                    onClick={() => navigate("/events", { state: { editEventId: dup.id } })}
+                                    onClick={() => navigate("/admin/events/manage", { state: { editEventId: dup.id } })}
                                   >
                                     Edit
                                   </button>
@@ -636,7 +693,7 @@ export default function SuperAdminEventsPage({ events = [], isLoading, error, on
                                     type="button"
                                     className="relay-btn-ghost relay-btn-sm"
                                     style={{ fontSize: "10px", padding: "1px 5px" }}
-                                    onClick={() => navigate("/events", { state: { editEventId: i.id } })}
+                                    onClick={() => navigate("/admin/events/manage", { state: { editEventId: i.id } })}
                                   >
                                     Edit
                                   </button>
@@ -673,10 +730,28 @@ export default function SuperAdminEventsPage({ events = [], isLoading, error, on
                               >
                                 <Eye size={13} style={{ color: "var(--teal)" }} /> View Public Page
                               </button>
+                              {event.status === "DRAFT" && (
+                                <button
+                                  type="button"
+                                  className="cc-action-dropdown-item"
+                                  style={{ color: "var(--teal)" }}
+                                  onClick={async () => {
+                                    setOpenMenuId(null);
+                                    try {
+                                      await relayApi.publishEvent(event.id);
+                                      if (onRefresh) await onRefresh();
+                                    } catch (err) {
+                                      alert(err.message || "Failed to publish event.");
+                                    }
+                                  }}
+                                >
+                                  <CheckCircle2 size={13} style={{ color: "var(--teal)" }} /> Publish Event
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 className="cc-action-dropdown-item"
-                                onClick={() => { setOpenMenuId(null); navigate("/events", { state: { editEventId: event.id } }); }}
+                                onClick={() => { setOpenMenuId(null); navigate("/admin/events/manage", { state: { editEventId: event.id } }); }}
                               >
                                 <Edit size={13} style={{ color: "var(--primary)" }} /> Edit Settings
                               </button>

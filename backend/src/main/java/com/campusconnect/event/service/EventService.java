@@ -121,7 +121,11 @@ public class EventService {
                 .coverImageUrl(request.getCoverImageUrl())
                 .createdBy(creator)
                 .build();
-        return toResponse(eventRepository.save(event));
+        Event saved = eventRepository.save(event);
+        if (saved.getStatus() == EventStatus.PUBLISHED) {
+            eventPublisher.publishEvent(new EventPublishedEvent(saved.getId(), saved.getTitle()));
+        }
+        return toResponse(saved);
     }
 
     public List<EventResponse> getAllEvents(User requester) {
@@ -228,6 +232,9 @@ public class EventService {
         if (!Objects.equals(oldStatus, event.getStatus().name())) {
             logChange(event, requester, "status", oldStatus, event.getStatus().name());
             changes.put("status", event.getStatus().name());
+            if (event.getStatus() == EventStatus.PUBLISHED && !"PUBLISHED".equals(oldStatus)) {
+                eventPublisher.publishEvent(new EventPublishedEvent(event.getId(), event.getTitle()));
+            }
         }
         
         if (!changes.isEmpty() && event.getStatus() == EventStatus.PUBLISHED) {

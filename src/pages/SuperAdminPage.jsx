@@ -50,7 +50,7 @@ export default function SuperAdminPage({ events = [], isLoading, error }) {
           </button>
           <button 
             className="cc-btn-primary" 
-            onClick={() => navigate("/events", { state: { create: true } })} 
+            onClick={() => navigate("/admin/events/manage", { state: { create: true } })} 
             style={{ padding: "9px 18px", fontSize: "13.5px" }}
           >
             <Plus size={16} /> Create Event
@@ -177,7 +177,7 @@ export default function SuperAdminPage({ events = [], isLoading, error }) {
                 <button
                   type="button"
                   className="relay-btn-ghost"
-                  onClick={() => navigate("/events", { state: { create: true } })}
+                  onClick={() => navigate("/admin/events/manage", { state: { create: true } })}
                   style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "10px 14px", fontSize: "13px" }}
                 >
                   <span>New Event Form</span>

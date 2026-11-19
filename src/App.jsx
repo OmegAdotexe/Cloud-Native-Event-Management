@@ -324,7 +324,11 @@ function MainApp() {
             {role === "PARTICIPANT" && <ParticipantEventsPage {...shared} />}
           </>} />
           {(role === "EVENT_ADMIN" || role === "SUPER_ADMIN") && (
-            <Route path="/admin/events/:eventId/analytics" element={<EventAnalyticsPage />} />
+            <>
+              <Route path="/admin/events/manage" element={<AdminPage {...shared} />} />
+              <Route path="/events/manage" element={<AdminPage {...shared} />} />
+              <Route path="/admin/events/:eventId/analytics" element={<EventAnalyticsPage />} />
+            </>
           )}
           {role === "SUPER_ADMIN" && (
             <Route path="/admin-management" element={<AdminManagementPage />} />

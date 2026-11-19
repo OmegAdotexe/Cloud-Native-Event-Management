@@ -46,6 +46,9 @@ public class User implements UserDetails {
     @Column(name = "google_sub", length = 100)
     private String googleSub;
 
+    @Column(name = "firebase_uid", length = 128, unique = true)
+    private String firebaseUid;
+
     @Builder.Default
     @Column(length = 50)
     private String status = "APPROVED";

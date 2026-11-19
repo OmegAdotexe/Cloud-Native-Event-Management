@@ -40,6 +40,7 @@ public class GoogleTokenVerifierService {
         private String name;
         private String picture;
         private String sub;
+        private String firebaseUid;
     }
 
     @PostConstruct
@@ -58,18 +59,20 @@ public class GoogleTokenVerifierService {
 
     public GoogleUserPayload verifyToken(String idToken) {
         if (idToken == null || idToken.isBlank()) {
-            throw new BadCredentialsException("Google ID token cannot be empty");
+            throw new BadCredentialsException("Authentication token cannot be empty");
         }
 
         // 1. Mock token handling: strictly restricted to local development / test environments
-        if (idToken.startsWith("mock-google-token-")) {
+        if (idToken.startsWith("mock-google-token-") || idToken.startsWith("mock-firebase-token-")) {
             boolean isDevOrTest = "dev".equalsIgnoreCase(activeProfile) || "test".equalsIgnoreCase(activeProfile);
             if (!isDevOrTest || !allowMockTokens) {
                 log.error("SECURITY REJECTION: Attempt to use mock token in unauthorized profile: {} (allowMock: {})", activeProfile, allowMockTokens);
                 throw new BadCredentialsException("Mock authentication tokens are strictly prohibited in production.");
             }
 
-            String email = idToken.replace("mock-google-token-", "").trim();
+            String email = idToken.replace("mock-google-token-", "")
+                    .replace("mock-firebase-token-", "")
+                    .trim();
             if (!email.contains("@")) {
                 email = email + "@thapar.edu";
             }
@@ -80,21 +83,63 @@ public class GoogleTokenVerifierService {
             mockPayload.setName("Developer User (" + email.split("@")[0] + ")");
             mockPayload.setPicture("https://ui-avatars.com/api/?name=" + email);
             mockPayload.setSub("mock-sub-" + Math.abs(email.hashCode()));
-            log.info("Mock token accepted for development testing: sub={}, email={}", mockPayload.getSub(), mockPayload.getEmail());
+            mockPayload.setFirebaseUid("mock-firebase-uid-" + Math.abs(email.hashCode()));
+            log.info("Mock token accepted for development testing: sub={}, firebaseUid={}, email={}", 
+                    mockPayload.getSub(), mockPayload.getFirebaseUid(), mockPayload.getEmail());
             return mockPayload;
         }
 
-        // 2. Production gate: If genuine OAuth is disabled until HTTPS domain setup, reject gracefully
+        // 2. Firebase ID Token Verification via Firebase Admin SDK (FirebaseAuth.verifyIdToken)
+        if (!com.google.firebase.FirebaseApp.getApps().isEmpty()) {
+            try {
+                com.google.firebase.auth.FirebaseToken decodedToken =
+                        com.google.firebase.auth.FirebaseAuth.getInstance().verifyIdToken(idToken);
+                if (decodedToken != null) {
+                    if (!decodedToken.isEmailVerified()) {
+                        throw new BadCredentialsException("Firebase account email is not verified. Please verify your email before signing in.");
+                    }
+
+                    String email = decodedToken.getEmail();
+                    if (email == null || email.isBlank()) {
+                        throw new BadCredentialsException("Firebase token missing verified email claim");
+                    }
+
+                    String uid = decodedToken.getUid();
+                    if (uid == null || uid.isBlank()) {
+                        throw new BadCredentialsException("Firebase token missing user identifier (UID)");
+                    }
+
+                    GoogleUserPayload result = new GoogleUserPayload();
+                    result.setEmail(email.toLowerCase().trim());
+                    result.setEmailVerified(true);
+                    result.setFirebaseUid(uid);
+                    result.setSub(uid);
+                    result.setName(decodedToken.getName() != null && !decodedToken.getName().isBlank()
+                            ? decodedToken.getName()
+                            : email.split("@")[0]);
+                    result.setPicture(decodedToken.getPicture());
+                    log.info("Successfully verified Firebase ID token for email: {}", email);
+                    return result;
+                }
+            } catch (BadCredentialsException bce) {
+                throw bce;
+            } catch (com.google.firebase.auth.FirebaseAuthException fae) {
+                log.debug("Token is not a valid Firebase ID token ({}), attempting Google OAuth verification fallback", fae.getMessage());
+            } catch (Exception ex) {
+                log.debug("Firebase ID token verification encountered exception: {}", ex.getMessage());
+            }
+        }
+
+        // 3. Fallback: Genuine Google ID Token Cryptographic Verification via Google's Public JWK Certs
         if (!googleAuthEnabled && "prod".equalsIgnoreCase(activeProfile)) {
             log.warn("Production Google OAuth is currently disabled pending verified HTTPS domain configuration.");
             throw new BadCredentialsException("Google Sign-In is disabled on HTTP public IP until a verified HTTPS domain is attached.");
         }
 
-        // 3. Genuine Google ID Token Cryptographic Verification via Google's Public JWK Certs
         try {
             GoogleIdToken googleIdToken = verifier.verify(idToken);
             if (googleIdToken == null) {
-                log.warn("Cryptographic signature, audience, or timestamp verification failed for provided Google ID token");
+                log.warn("Cryptographic signature, audience, or timestamp verification failed for provided token");
                 throw new BadCredentialsException("Invalid or forged Google ID token signature");
             }
 

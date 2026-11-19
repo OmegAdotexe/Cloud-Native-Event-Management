@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext.jsx";
-import { Radio, ArrowLeft, Sparkles, Shield, User, ShieldCheck, Info } from "lucide-react";
+import { Radio, ArrowLeft, Sparkles, Shield, User, ShieldCheck } from "lucide-react";
+import { signInWithGoogle } from "../services/firebaseAuth.js";
 
 export default function LoginPage() {
   const [selectedRole, setSelectedRole] = useState("PARTICIPANT"); // UI portal selector
@@ -10,7 +11,6 @@ export default function LoginPage() {
   const { login, loginWithGoogle, error } = useAuth();
   const [loading, setLoading] = useState(false);
   const [localError, setLocalError] = useState("");
-  const [showGoogleNotice, setShowGoogleNotice] = useState(false);
   const navigate = useNavigate();
 
   const handleLocalSubmit = async (e) => {
@@ -28,20 +28,27 @@ export default function LoginPage() {
     }
   };
 
-  const handleSimulateGoogleAuth = async (mockEmail) => {
+  const handleGoogleSignIn = async () => {
     setLocalError("");
     setLoading(true);
     try {
+      const firebaseResult = await signInWithGoogle();
+      if (!firebaseResult || !firebaseResult.idToken) {
+        throw new Error("Unable to obtain authentication token from Google.");
+      }
       await loginWithGoogle({
-        idToken: `mock-google-token-${mockEmail || "student@thapar.edu"}`,
-        department: "Computer Science",
+        idToken: firebaseResult.idToken,
+        department: "General",
       });
       navigate("/");
     } catch (err) {
-      setLocalError(err.message || "Google authentication failed.");
+      if (err.code === "auth/popup-closed-by-user") {
+        setLocalError("Google sign-in popup was closed before completing.");
+      } else {
+        setLocalError(err.message || "Google authentication failed.");
+      }
     } finally {
       setLoading(false);
-      setShowGoogleNotice(false);
     }
   };
 
@@ -164,7 +171,7 @@ export default function LoginPage() {
               fontSize: "13.5px",
               color: "var(--text)",
             }}
-            onClick={() => setShowGoogleNotice(true)}
+            onClick={handleGoogleSignIn}
             disabled={loading}
           >
             <svg width="18" height="18" viewBox="0 0 24 24">
@@ -176,38 +183,6 @@ export default function LoginPage() {
             Continue with Google
           </button>
         </div>
-
-        {/* Google OAuth Modal / Notice */}
-        {showGoogleNotice && (
-          <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "12px", padding: "14px", marginBottom: "18px" }}>
-            <div style={{ display: "flex", gap: "8px", alignItems: "flex-start", marginBottom: "8px" }}>
-              <Info size={16} style={{ color: "var(--primary)", marginTop: "2px", flexShrink: 0 }} />
-              <div>
-                <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text)" }}>Google Identity Services Notice</div>
-                <div style={{ fontSize: "11.5px", color: "var(--mute)", lineHeight: "1.4" }}>
-                  Google OAuth strictly requires an authorized HTTPS origin and verified university domain (e.g. <code>https://events.thapar.edu</code>). In the current HTTP public IP deployment, production OAuth remains disabled until domain & credentials are configured.
-                </div>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
-              <button
-                type="button"
-                className="cc-btn-primary"
-                style={{ fontSize: "12px", padding: "6px 12px" }}
-                onClick={() => handleSimulateGoogleAuth("student.demo@thapar.edu")}
-              >
-                Simulate @thapar.edu Google Login
-              </button>
-              <button
-                type="button"
-                className="relay-btn-ghost relay-btn-sm"
-                onClick={() => setShowGoogleNotice(false)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        )}
 
         <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "14px 0" }}>
           <div style={{ flex: 1, height: "1px", background: "var(--border)" }} />

@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext.jsx";
 import * as relayApi from "../api/relayApi.js";
-import { Radio, ArrowLeft, ShieldCheck, Info, UserCheck, CheckCircle2 } from "lucide-react";
+import { Radio, ArrowLeft, ShieldCheck, UserCheck, CheckCircle2 } from "lucide-react";
+import { signInWithGoogle } from "../services/firebaseAuth.js";
 
 export default function RegisterPage() {
   const location = useLocation();
@@ -21,7 +22,6 @@ export default function RegisterPage() {
   const { register, login, loginWithGoogle, error } = useAuth();
   const [loading, setLoading] = useState(false);
   const [localError, setLocalError] = useState("");
-  const [showGoogleNotice, setShowGoogleNotice] = useState(false);
   const [applicationSubmitted, setApplicationSubmitted] = useState(false);
   const navigate = useNavigate();
 
@@ -74,20 +74,27 @@ export default function RegisterPage() {
     }
   };
 
-  const handleSimulateGoogleRegister = async () => {
+  const handleGoogleSignUp = async () => {
     setLocalError("");
     setLoading(true);
     try {
+      const firebaseResult = await signInWithGoogle();
+      if (!firebaseResult || !firebaseResult.idToken) {
+        throw new Error("Unable to obtain authentication token from Google.");
+      }
       await loginWithGoogle({
-        idToken: `mock-google-token-${email || "newstudent@thapar.edu"}`,
-        department: department || "Engineering",
+        idToken: firebaseResult.idToken,
+        department: department || "General",
       });
       navigate("/");
     } catch (err) {
-      setLocalError(err.message || "Google registration failed.");
+      if (err.code === "auth/popup-closed-by-user") {
+        setLocalError("Google sign-in popup was closed before completing.");
+      } else {
+        setLocalError(err.message || "Google registration failed.");
+      }
     } finally {
       setLoading(false);
-      setShowGoogleNotice(false);
     }
   };
 
@@ -209,7 +216,7 @@ export default function RegisterPage() {
                       gap: "10px", padding: "10px 14px", borderRadius: "10px", border: "1px solid var(--border)",
                       background: "var(--surface)", fontWeight: 600, fontSize: "13.5px", color: "var(--text)",
                     }}
-                    onClick={() => setShowGoogleNotice(true)}
+                    onClick={handleGoogleSignUp}
                     disabled={loading}
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24">
@@ -221,37 +228,6 @@ export default function RegisterPage() {
                     Sign up with Google
                   </button>
                 </div>
-
-                {showGoogleNotice && (
-                  <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "12px", padding: "14px", marginBottom: "18px" }}>
-                    <div style={{ display: "flex", gap: "8px", alignItems: "flex-start", marginBottom: "8px" }}>
-                      <Info size={16} style={{ color: "var(--primary)", marginTop: "2px", flexShrink: 0 }} />
-                      <div>
-                        <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text)" }}>Google Identity Notice</div>
-                        <div style={{ fontSize: "11.5px", color: "var(--mute)", lineHeight: "1.4" }}>
-                          Google OAuth mandates an authorized HTTPS domain for production. On dev environments, you can simulate verified student registration with 1 click.
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
-                      <button
-                        type="button"
-                        className="cc-btn-primary"
-                        style={{ fontSize: "12px", padding: "6px 12px" }}
-                        onClick={handleSimulateGoogleRegister}
-                      >
-                        Simulate @thapar.edu Google Signup
-                      </button>
-                      <button
-                        type="button"
-                        className="relay-btn-ghost relay-btn-sm"
-                        onClick={() => setShowGoogleNotice(false)}
-                      >
-                        Close
-                      </button>
-                    </div>
-                  </div>
-                )}
 
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "14px 0" }}>
                   <div style={{ flex: 1, height: "1px", background: "var(--border)" }} />

@@ -75,59 +75,103 @@ public class AuthService {
         GoogleTokenVerifierService.GoogleUserPayload payload = googleTokenVerifierService.verifyToken(request.getIdToken());
         
         if (!payload.isEmailVerified()) {
-            throw new org.springframework.security.authentication.BadCredentialsException("Google account email is not verified by Google. Authentication rejected.");
+            throw new org.springframework.security.authentication.BadCredentialsException("Account email is not verified. Authentication rejected.");
         }
 
         String verifiedEmail = payload.getEmail().toLowerCase().trim();
+        String firebaseUid = payload.getFirebaseUid();
         String googleSub = payload.getSub();
 
-        if (googleSub == null || googleSub.isBlank()) {
-            throw new org.springframework.security.authentication.BadCredentialsException("Google token missing verified subject identifier.");
+        if ((firebaseUid == null || firebaseUid.isBlank()) && (googleSub == null || googleSub.isBlank())) {
+            throw new org.springframework.security.authentication.BadCredentialsException("Token missing verified subject or user identifier.");
         }
 
-        // 1. Primary lookup by stable external identifier (google_sub)
-        User user = userRepository.findByGoogleSub(googleSub).orElse(null);
+        User user = null;
+
+        // 1. Primary lookup by stable external identifier (firebaseUid)
+        if (firebaseUid != null && !firebaseUid.isBlank()) {
+            user = userRepository.findByFirebaseUid(firebaseUid).orElse(null);
+        }
+
+        // 2. Secondary lookup by legacy google_sub
+        if (user == null && googleSub != null && !googleSub.isBlank()) {
+            user = userRepository.findByGoogleSub(googleSub).orElse(null);
+        }
 
         if (user == null) {
-            // 2. Secondary lookup by cryptographically verified email
+            // 3. Tertiary lookup by cryptographically verified email
             user = userRepository.findByEmail(verifiedEmail).orElse(null);
 
             if (user != null) {
                 // SECURITY AUDIT: Prevent account takeover of administrative accounts
                 if (user.getRole() == Role.EVENT_ADMIN || user.getRole() == Role.SUPER_ADMIN || Boolean.TRUE.equals(user.getIsPlatformOperator())) {
-                    log.warn("Blocked attempt to link administrative account {} via Google Sign-In", verifiedEmail);
+                    log.warn("Blocked attempt to link administrative account {} via external Google Sign-In", verifiedEmail);
                     throw new org.springframework.security.access.AccessDeniedException(
                             "Administrative and Organizer accounts cannot be accessed or linked via Google Sign-In. Please sign in using your designated administrative credentials."
                     );
                 }
 
+                // Prevent duplicate identity associations: account already linked to a different Firebase UID
+                if (firebaseUid != null) {
+                    if (user.getFirebaseUid() != null && !user.getFirebaseUid().equals(firebaseUid)) {
+                        log.error("Identity conflict: Account {} already linked to firebase_uid {}, cannot link to {}", verifiedEmail, user.getFirebaseUid(), firebaseUid);
+                        throw new org.springframework.security.authentication.BadCredentialsException("Account identity conflict: This account is already associated with a different Firebase account.");
+                    }
+                    // Ensure Firebase UID is unique in the database
+                    Optional<User> existingUidUser = userRepository.findByFirebaseUid(firebaseUid);
+                    if (existingUidUser.isPresent() && !existingUidUser.get().getId().equals(user.getId())) {
+                        log.error("Firebase UID collision: {} is already attached to user {}", firebaseUid, existingUidUser.get().getEmail());
+                        throw new org.springframework.security.authentication.BadCredentialsException("Identity collision: This Google account is already linked to another CampusConnect profile.");
+                    }
+                    user.setFirebaseUid(firebaseUid);
+                }
+
                 // Prevent duplicate identity associations: account already linked to a different Google sub
-                if (user.getGoogleSub() != null && !user.getGoogleSub().equals(googleSub)) {
-                    log.error("Identity conflict: Account {} already linked to google_sub {}, cannot link to {}", verifiedEmail, user.getGoogleSub(), googleSub);
-                    throw new org.springframework.security.authentication.BadCredentialsException("Account identity conflict: This account is already associated with a different Google account.");
+                if (googleSub != null) {
+                    if (user.getGoogleSub() != null && !user.getGoogleSub().equals(googleSub)) {
+                        log.error("Identity conflict: Account {} already linked to google_sub {}, cannot link to {}", verifiedEmail, user.getGoogleSub(), googleSub);
+                        throw new org.springframework.security.authentication.BadCredentialsException("Account identity conflict: This account is already associated with a different Google account.");
+                    }
+                    user.setGoogleSub(googleSub);
                 }
 
                 // Safely link regular participant account
-                log.info("Linking participant account {} to Google sub {}", verifiedEmail, googleSub);
-                user.setGoogleSub(googleSub);
-                user.setAuthProvider("GOOGLE");
+                log.info("Linking participant account {} to Firebase UID {} / Google sub {}", verifiedEmail, firebaseUid, googleSub);
+                user.setAuthProvider(firebaseUid != null ? "FIREBASE_GOOGLE" : "GOOGLE");
                 if (request.getDepartment() != null && (user.getDepartment() == null || user.getDepartment().isBlank())) {
                     user.setDepartment(request.getDepartment().trim());
                 }
             } else {
-                // 3. New participant self-registration via Google
-                user = User.builder()
+                // 4. New participant self-registration via Firebase/Google
+                if (firebaseUid != null && userRepository.findByFirebaseUid(firebaseUid).isPresent()) {
+                    throw new org.springframework.security.authentication.BadCredentialsException("Identity conflict: Firebase UID already associated with an existing account.");
+                }
+
+                User.UserBuilder userBuilder = User.builder()
                         .name(payload.getName() != null && !payload.getName().isBlank() ? payload.getName() : verifiedEmail.split("@")[0])
                         .email(verifiedEmail)
-                        .googleSub(googleSub)
                         .password(passwordEncoder.encode(java.util.UUID.randomUUID().toString()))
                         .role(Role.PARTICIPANT) // ALWAYS PARTICIPANT, NO ELEVATION
-                        .authProvider("GOOGLE")
+                        .authProvider(firebaseUid != null ? "FIREBASE_GOOGLE" : "GOOGLE")
                         .status("APPROVED")
                         .department(request.getDepartment() != null && !request.getDepartment().isBlank() ? request.getDepartment().trim() : "General")
                         .profileImageUrl(payload.getPicture())
-                        .isPlatformOperator(false)
-                        .build();
+                        .isPlatformOperator(false);
+
+                if (firebaseUid != null) {
+                    userBuilder.firebaseUid(firebaseUid);
+                }
+                if (googleSub != null) {
+                    userBuilder.googleSub(googleSub);
+                }
+
+                user = userBuilder.build();
+            }
+        } else {
+            // Existing user recognized by firebaseUid or googleSub:
+            // If matched by googleSub and firebaseUid is present, link firebaseUid if not set yet
+            if (firebaseUid != null && user.getFirebaseUid() == null) {
+                user.setFirebaseUid(firebaseUid);
             }
         }
 

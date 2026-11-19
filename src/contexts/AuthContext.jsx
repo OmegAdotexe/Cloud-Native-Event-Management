@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import * as relayApi from "../api/relayApi.js";
+import { signOutFromFirebase } from "../services/firebaseAuth.js";
 
 // ---------------------------------------------------------------------------
 // Context definition
@@ -100,6 +101,11 @@ export function AuthProvider({ children }) {
       await relayApi.logout();
     } catch (err) {
       console.warn("Logout api failed:", err);
+    }
+    try {
+      await signOutFromFirebase();
+    } catch (fErr) {
+      console.warn("Firebase signout error:", fErr);
     }
     sessionStorage.removeItem("relay_auth_token");
     localStorage.removeItem("relay_auth_token");

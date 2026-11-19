@@ -33,6 +33,7 @@ public class GoogleAuthServiceSecurityTest {
         final Map<Long, User> usersById = new HashMap<>();
         final Map<String, User> usersByEmail = new HashMap<>();
         final Map<String, User> usersBySub = new HashMap<>();
+        final Map<String, User> usersByFirebaseUid = new HashMap<>();
         long idSeq = 100L;
 
         @Override
@@ -43,6 +44,11 @@ public class GoogleAuthServiceSecurityTest {
         @Override
         public Optional<User> findByGoogleSub(String googleSub) {
             return Optional.ofNullable(usersBySub.get(googleSub));
+        }
+
+        @Override
+        public Optional<User> findByFirebaseUid(String firebaseUid) {
+            return Optional.ofNullable(usersByFirebaseUid.get(firebaseUid));
         }
 
         @Override
@@ -59,6 +65,9 @@ public class GoogleAuthServiceSecurityTest {
             usersByEmail.put(user.getEmail().toLowerCase(), user);
             if (user.getGoogleSub() != null) {
                 usersBySub.put(user.getGoogleSub(), user);
+            }
+            if (user.getFirebaseUid() != null) {
+                usersByFirebaseUid.put(user.getFirebaseUid(), user);
             }
             return user;
         }
@@ -253,5 +262,99 @@ public class GoogleAuthServiceSecurityTest {
         assertEquals("google-sub-555", savedUser.getGoogleSub());
         assertEquals(Role.PARTICIPANT, savedUser.getRole());
         assertEquals("GOOGLE", savedUser.getAuthProvider());
+    }
+
+    @Test
+    @DisplayName("Firebase Self-Registration: Creates participant with stable firebase_uid and forces Role.PARTICIPANT")
+    void testParticipantSelfRegistrationWithFirebaseUid() {
+        GoogleTokenVerifierService.GoogleUserPayload payload = new GoogleTokenVerifierService.GoogleUserPayload();
+        payload.setEmail("firebase.student@thapar.edu");
+        payload.setEmailVerified(true);
+        payload.setName("Firebase Student");
+        payload.setFirebaseUid("firebase-uid-777");
+        payload.setPicture("https://avatar.url/firebase.png");
+        verifierService.stubPayload = payload;
+
+        GoogleAuthRequest request = new GoogleAuthRequest();
+        request.setIdToken("firebase-token-777");
+        request.setDepartment("Computer Science");
+
+        AuthResponse response = authService.authenticateWithGoogle(request);
+
+        assertNotNull(response);
+        assertEquals("firebase.student@thapar.edu", response.getEmail());
+        assertEquals(Role.PARTICIPANT, response.getRole());
+        assertNotNull(response.getToken());
+
+        User savedUser = userRepository.findByEmail("firebase.student@thapar.edu").orElseThrow();
+        assertEquals("firebase-uid-777", savedUser.getFirebaseUid());
+        assertEquals(Role.PARTICIPANT, savedUser.getRole());
+        assertEquals("FIREBASE_GOOGLE", savedUser.getAuthProvider());
+    }
+
+    @Test
+    @DisplayName("Firebase Account Linking: Safely links Firebase UID for existing local participant")
+    void testFirebaseAccountLinkingForExistingParticipant() {
+        User existingUser = User.builder()
+                .id(20L)
+                .email("existing.student@thapar.edu")
+                .name("Existing Student")
+                .role(Role.PARTICIPANT)
+                .authProvider("LOCAL")
+                .status("APPROVED")
+                .build();
+        userRepository.save(existingUser);
+
+        GoogleTokenVerifierService.GoogleUserPayload payload = new GoogleTokenVerifierService.GoogleUserPayload();
+        payload.setEmail("existing.student@thapar.edu");
+        payload.setEmailVerified(true);
+        payload.setName("Existing Student");
+        payload.setFirebaseUid("firebase-uid-888");
+        verifierService.stubPayload = payload;
+
+        GoogleAuthRequest request = new GoogleAuthRequest();
+        request.setIdToken("firebase-token-888");
+
+        AuthResponse response = authService.authenticateWithGoogle(request);
+
+        assertNotNull(response);
+        assertEquals("existing.student@thapar.edu", response.getEmail());
+        assertEquals(Role.PARTICIPANT, response.getRole());
+
+        User updatedUser = userRepository.findByEmail("existing.student@thapar.edu").orElseThrow();
+        assertEquals("firebase-uid-888", updatedUser.getFirebaseUid());
+        assertEquals(Role.PARTICIPANT, updatedUser.getRole());
+        assertEquals("FIREBASE_GOOGLE", updatedUser.getAuthProvider());
+    }
+
+    @Test
+    @DisplayName("Firebase Identity Protection: Reject account linking if account is already tied to a different Firebase UID")
+    void testPreventDuplicateFirebaseUidCollision() {
+        User existingUser = User.builder()
+                .id(25L)
+                .email("colliding.student@thapar.edu")
+                .firebaseUid("original-firebase-uid-111")
+                .role(Role.PARTICIPANT)
+                .authProvider("FIREBASE_GOOGLE")
+                .status("APPROVED")
+                .build();
+        userRepository.save(existingUser);
+
+        GoogleTokenVerifierService.GoogleUserPayload payload = new GoogleTokenVerifierService.GoogleUserPayload();
+        payload.setEmail("colliding.student@thapar.edu");
+        payload.setEmailVerified(true);
+        payload.setName("Colliding Student");
+        payload.setFirebaseUid("different-firebase-uid-222");
+        verifierService.stubPayload = payload;
+
+        GoogleAuthRequest request = new GoogleAuthRequest();
+        request.setIdToken("token-test");
+
+        BadCredentialsException exception = assertThrows(BadCredentialsException.class, () -> {
+            authService.authenticateWithGoogle(request);
+        });
+
+        assertTrue(exception.getMessage().contains("already associated with a different Firebase account"),
+                "Expected Firebase collision rejection, got: " + exception.getMessage());
     }
 }

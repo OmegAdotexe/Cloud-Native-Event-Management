@@ -60,6 +60,10 @@ google:
   enabled: ${GOOGLE_AUTH_ENABLED:false}
   allow-mock: ${GOOGLE_ALLOW_MOCK:true}
 
+firebase:
+  credentials-path: ${FIREBASE_CREDENTIALS_PATH:}
+  project-id: ${FIREBASE_PROJECT_ID:}
+
 app:
   institutional-domains: ${INSTITUTIONAL_DOMAINS:thapar.edu}
   email:

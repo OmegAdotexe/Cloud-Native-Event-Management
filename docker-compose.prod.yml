@@ -84,8 +84,12 @@ services:
       JWT_EXPIRATION_MS: 86400000
       SPRING_PROFILES_ACTIVE: dev
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-YOUR_GOOGLE_CLIENT_ID}
-      GOOGLE_ALLOW_MOCK: ${GOOGLE_ALLOW_MOCK:-true}
+      GOOGLE_ALLOW_MOCK: ${GOOGLE_ALLOW_MOCK:-false}
       INSTITUTIONAL_DOMAINS: ${INSTITUTIONAL_DOMAINS:-thapar.edu}
+      FIREBASE_CREDENTIALS_PATH: ${FIREBASE_CREDENTIALS_PATH:-/app/firebase-admin.json}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-campusconnect-bced1}
+    volumes:
+      - ./backend/firebase-admin.json:/app/firebase-admin.json:ro
     depends_on:
       postgres:
         condition: service_healthy
